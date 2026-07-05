@@ -6,7 +6,13 @@
     <title>Game RPG Gacha</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        body, html { margin: 0; padding: 0; overflow: hidden; background-color: #0f172a; font-family: system-ui, -apple-system, sans-serif; user-select: none; }
+        /* CHIỀU CAO THỰC CỦA VÙNG HIỂN THỊ TRÊN DI ĐỘNG (CẬP NHẬT BẰNG JS Ở CUỐI TRANG) */
+        :root { --app-height: 100vh; }
+        body, html { margin: 0; padding: 0; overflow: hidden; background-color: #0f172a; font-family: system-ui, -apple-system, sans-serif; user-select: none; height: 100%; }
+        /* ƯU TIÊN 100dvh (TỰ ĐỘNG CO THEO VÙNG HIỂN THỊ THẬT KHI THANH ĐỊA CHỈ ẨN/HIỆN),
+           NẾU TRÌNH DUYỆT KHÔNG HỖ TRỢ THÌ DÙNG BIẾN --app-height DO JS TÍNH TỪ window.innerHeight */
+        body { height: var(--app-height); }
+        @supports (height: 100dvh) { body { height: 100dvh; } }
         .animate-bounce-slow { animation: bounce 3s ease-in-out infinite; }
         @keyframes bounce { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }
         ::-webkit-scrollbar { width: 4px; height: 4px; }
@@ -29,7 +35,7 @@
         .animate-ssr-fullscreen { animation: ssr-explode 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; }
     </style>
 </head>
-<body class="flex justify-center items-center h-screen w-screen">
+<body class="flex justify-center items-center w-screen">
 
     <div class="w-full max-w-[430px] h-full max-h-[880px] md:h-[94vh] bg-slate-900 bookkeeping flex flex-col justify-between relative shadow-2xl overflow-hidden rounded-none md:rounded-3xl border border-slate-800">
          
@@ -265,6 +271,17 @@
     </div>
 
     <script>
+        // KHẮC PHỤC LỖI THANH ĐIỀU HƯỚNG DƯỚI CÙNG BỊ ĐẨY RA NGOÀI MÀN HÌNH TRÊN DI ĐỘNG:
+        // Tính chiều cao THẬT của vùng hiển thị (window.innerHeight) và lưu vào biến CSS --app-height.
+        // Đây là fallback cho trình duyệt không hỗ trợ đơn vị 100dvh; luôn chạy để đảm bảo an toàn.
+        function setAppHeight() {
+            document.documentElement.style.setProperty('--app-height', window.innerHeight + 'px');
+        }
+        setAppHeight();
+        window.addEventListener('resize', setAppHeight);
+        window.addEventListener('orientationchange', setAppHeight);
+        if (window.visualViewport) window.visualViewport.addEventListener('resize', setAppHeight);
+
         // CƠ SỞ DỮ LIỆU GAME PHỤC VỤ QUAY GACHA VÀ PHẦN THƯỞNG BANNER
         const HERO_DB = {
             "Thỏ Ngọc": { rarity: "SSR", element: "KIM", job: "CHIẾN SĨ", atk: 120, hp: 1000, def: 60, spd: 115, avatar: "Assets/img/heroes/thongoc/avatar.png", splash: "Assets/img/heroes/thongoc/splash.png" },
