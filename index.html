@@ -1,0 +1,807 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Game RPG Gacha</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body, html { margin: 0; padding: 0; overflow: hidden; background-color: #0f172a; font-family: system-ui, -apple-system, sans-serif; user-select: none; }
+        .animate-bounce-slow { animation: bounce 3s ease-in-out infinite; }
+        @keyframes bounce { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }
+        ::-webkit-scrollbar { width: 4px; height: 4px; }
+        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 10px; }
+        
+        /* CẤU HÌNH HIỆU ỨNG LẬT BÀI 3D */
+        .gacha-perspective { perspective: 1000px; }
+        .card-inner { position: relative; width: 100%; height: 100%; text-align: center; transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1); transform-style: preserve-3d; }
+        .card-flipped { transform: rotateY(180deg); }
+        .card-front, .card-back { position: absolute; width: 100%; height: 100%; backface-visibility: hidden; border-radius: 0.75rem; }
+        .card-front { transform: rotateY(180deg); }
+        .card-back { background: linear-gradient(135deg, #1e1b4b 0%, #311042 100%); border: 2px solid #a855f7; display: flex; flex-direction: column; justify-content: center; align-items: center; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.5); }
+
+        /* HIỆU ỨNG BÙNG NỔ SSR TRÀN MÀN HÌNH */
+        @keyframes ssr-explode {
+            0% { transform: scale(0.3); opacity: 0; filter: brightness(2); }
+            50% { opacity: 1; filter: brightness(1.5); }
+            100% { transform: scale(1); opacity: 1; filter: brightness(1); }
+        }
+        .animate-ssr-fullscreen { animation: ssr-explode 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; }
+    </style>
+</head>
+<body class="flex justify-center items-center h-screen w-screen">
+
+    <div class="w-full max-w-[430px] h-full max-h-[880px] md:h-[94vh] bg-slate-900 bookkeeping flex flex-col justify-between relative shadow-2xl overflow-hidden rounded-none md:rounded-3xl border border-slate-800">
+         
+        <!-- TOP BAR TÀI NGUYÊN -->
+        <div class="w-full bg-slate-950/80 backdrop-blur-md p-3 flex justify-between items-center text-white text-xs z-10 pt-6 md:pt-3 border-b border-slate-800">
+            <div class="flex items-center space-x-1.5">
+                <div class="w-8 h-8 rounded-full border-2 border-yellow-500 bg-slate-700 overflow-hidden flex items-center justify-center font-bold text-yellow-500 text-[10px]">TL</div>
+                <div>
+                    <p class="font-bold text-yellow-400 text-[11px] leading-none">ThinhLamTich</p>
+                    <p class="text-[9px] text-slate-400 mt-0.5">BP Đội: <span id="txt-total-bp" class="font-mono text-orange-400 font-bold">0</span></p>
+                </div>
+            </div>
+            <div class="flex space-x-1.5 text-[11px]">
+                <span class="bg-slate-800 px-2 py-0.5 rounded-full flex items-center border border-purple-500">🎫 <span id="txt-ve-quay" class="ml-1 font-mono font-bold text-purple-300">200</span></span>
+                <span class="bg-slate-800 px-2 py-0.5 rounded-full flex items-center border border-cyan-500">💎 <span id="txt-kim-cuong" class="ml-1 font-mono font-bold text-cyan-400">10000</span></span>
+                <span class="bg-slate-800 px-2 py-0.5 rounded-full flex items-center border border-yellow-600">🪙 <span id="txt-vang" class="ml-1 font-mono font-bold text-yellow-500">100000</span></span>
+            </div>
+        </div>
+
+        <!-- MÀN HÌNH SẢNH CHÍNH -->
+        <div id="view-lobby" class="hidden flex-1 flex flex-col justify-between p-4 bg-gradient-to-b from-slate-950 to-slate-900 text-white">
+            <div class="text-center mt-10">
+                <h1 class="text-xl font-black text-yellow-400 tracking-wider">SẢNH CHÍNH GAME RPG</h1>
+                <p class="text-xs text-slate-400 mt-2">Chào mừng ThinhLamTich trở lại vương quốc!</p>
+            </div>
+            <div class="bg-slate-950/50 border border-slate-800 rounded-2xl p-4 text-center">
+                <span class="text-5xl block animate-pulse">🏰</span>
+                <p class="text-[11px] text-slate-400 mt-2">Hệ thống thành trì và tài nguyên đang vận hành ổn định.</p>
+            </div>
+            <div class="h-10"></div>
+        </div>
+
+        <!-- MÀN HÌNH TRIỆU HỒI -->
+        <div id="view-gacha" class="flex-1 flex flex-col justify-between relative overflow-hidden">
+            <div class="w-full bg-slate-950 p-2 flex space-x-2 border-b border-slate-900 z-10">
+                <button onclick="switchBanner('tuong_thu')" id="tab-tuong_thu" class="flex-1 text-center py-1.5 rounded-lg font-bold text-xs transition bg-purple-600 text-white border border-purple-400">👤 Chiêu Mộ Tướng</button>
+                <button onclick="switchBanner('trang_bi')" id="tab-trang_bi" class="flex-1 text-center py-1.5 rounded-lg font-bold text-xs transition bg-slate-800 text-slate-400 border border-transparent">⚔️ Gacha Trang Bị</button>
+            </div>
+            <div class="flex-1 flex flex-col justify-between p-4 bg-gradient-to-b from-slate-950 to-slate-900">
+                <div class="flex-1 flex flex-col justify-center items-center relative min-h-[250px]">
+                    <div id="banner-visual" class="w-44 h-56 bg-slate-800 border border-purple-500/30 rounded-2xl flex flex-col items-center justify-center shadow-xl relative overflow-hidden">
+                        <img id="banner-img" src="Assets/img/heroes/thetis/splash.png" onerror="this.src='https://via.placeholder.com/200x300?text=Hero+Banner'" class="w-full h-full object-cover animate-bounce-slow">
+                        <div class="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black p-2 text-center">
+                            <span id="banner-tag" class="text-[10px] text-purple-300 font-bold tracking-widest">HERO SUMMON</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-3 pb-1">
+                    <button onclick="handleGacha(1)" class="bg-gradient-to-b from-amber-500 to-orange-600 text-slate-950 rounded-xl py-2.5 font-black text-xs active:scale-95 transition">Quay 1 Lần<br><span class="text-[9px] font-normal text-slate-800">🎫1 / 💎250</span></button>
+                    <button onclick="handleGacha(10)" class="bg-gradient-to-b from-purple-600 to-indigo-700 text-white rounded-xl py-2.5 font-bold text-xs active:scale-95 transition">Quay 10 Lần<br><span class="text-[9px] font-normal text-purple-100">🎫10 / 💎2400</span></button>
+                </div>
+            </div>
+        </div>
+
+        <!-- MÀN HÌNH DANH SÁCH ANH HÙNG -->
+        <div id="view-heroes" class="hidden flex-1 flex flex-col justify-between relative overflow-hidden bg-gradient-to-b from-slate-950 to-slate-900">
+            <div class="w-full bg-slate-950 p-3 border-b border-slate-900">
+                <span class="text-white font-bold text-sm">🎒 Danh Sách Anh Hùng Đang Có (<span id="txt-count-tuong" class="text-yellow-400 font-mono">2</span>)</span>
+            </div>
+            <div id="heroes-list-grid" class="flex-1 p-3 gap-3 grid grid-cols-4 content-start overflow-y-auto"></div>
+        </div>
+
+        <!-- MÀN HÌNH CHIẾN ĐẤU -->
+        <div id="view-combat" class="hidden flex-1 flex flex-col justify-between p-4 bg-gradient-to-b from-slate-950 to-slate-900 text-white">
+            <div class="text-center mt-10">
+                <h1 class="text-xl font-black text-red-500 tracking-wider">PHÒNG THÍ NGHIỆM CHIẾN ĐẤU</h1>
+                <p class="text-xs text-slate-400 mt-2">Lập đội hình thách thức các phó bản cốt truyện.</p>
+            </div>
+            <div class="bg-slate-950/50 border border-red-900/40 rounded-2xl p-6 text-center">
+                <span class="text-5xl block animate-bounce-slow">⚔️</span>
+                <p class="text-xs text-red-400 font-bold mt-4">Chế độ cốt truyện chương 1 đang mở!</p>
+            </div>
+            <div class="h-10"></div>
+        </div>
+
+        <!-- MÀN HÌNH TÚI ĐỒ -->
+        <div id="view-bag" class="hidden flex-1 flex flex-col relative overflow-hidden bg-gradient-to-b from-slate-950 to-slate-900">
+            <div class="w-full bg-slate-950 p-3 border-b border-slate-900 flex items-center justify-between">
+                <span class="text-white font-bold text-sm">💼 Túi Đồ</span>
+                <button onclick="resetGameState()" class="text-[9px] bg-red-950 border border-red-800 text-red-400 px-2 py-1 rounded">🔄 Chơi lại từ đầu</button>
+            </div>
+            <div class="bg-slate-950 flex text-center text-[10px] font-bold text-slate-400 border-b border-slate-900">
+                <button onclick="switchBagTab('vatlieu')" id="tab-bag-vatlieu" class="flex-1 py-2.5">🧪 Vật liệu</button>
+                <button onclick="switchBagTab('trangbi')" id="tab-bag-trangbi" class="flex-1 py-2.5">⚔️ Trang bị</button>
+                <button onclick="switchBagTab('hopqua')" id="tab-bag-hopqua" class="flex-1 py-2.5">🎁 Hộp quà</button>
+            </div>
+
+            <div id="panel-bag-vatlieu" class="hidden flex-1 overflow-y-auto p-3">
+                <div id="materials-list-grid" class="grid grid-cols-4 gap-2"></div>
+            </div>
+
+            <div id="panel-bag-trangbi" class="hidden flex-1 flex flex-col overflow-hidden">
+                <div class="p-2 bg-slate-900/60 border-b border-slate-800 flex items-center space-x-1.5 overflow-x-auto">
+                    <span class="text-[9px] text-slate-400 whitespace-nowrap shrink-0">🗑️ Xóa nhanh:</span>
+                    <button onclick="quickDeleteEquipByRarity('SSR')" class="text-[9px] bg-yellow-900/40 border border-yellow-600 text-yellow-400 px-2 py-1 rounded whitespace-nowrap shrink-0">SSR</button>
+                    <button onclick="quickDeleteEquipByRarity('SR')" class="text-[9px] bg-purple-900/40 border border-purple-600 text-purple-400 px-2 py-1 rounded whitespace-nowrap shrink-0">SR</button>
+                    <button onclick="quickDeleteEquipByRarity('R')" class="text-[9px] bg-blue-900/40 border border-blue-600 text-blue-400 px-2 py-1 rounded whitespace-nowrap shrink-0">R</button>
+                    <button onclick="quickDeleteEquipByRarity('N')" class="text-[9px] bg-slate-800 border border-slate-600 text-slate-400 px-2 py-1 rounded whitespace-nowrap shrink-0">N</button>
+                </div>
+                <div id="bag-equip-list" class="flex-1 overflow-y-auto p-3 grid grid-cols-3 gap-2 content-start"></div>
+            </div>
+
+            <div id="panel-bag-hopqua" class="hidden flex-1 overflow-y-auto p-3">
+                <div id="giftbox-list-grid" class="grid grid-cols-4 gap-2"></div>
+            </div>
+        </div>
+
+        <!-- MÀN HÌNH CHI TIẾT ANH HÙNG (CẤU TRÚC 66% - 27%) -->
+        <div id="view-hero-detail" class="hidden absolute inset-0 bg-slate-950 z-40 flex flex-col justify-between pt-6 md:pt-2">
+            
+            <div id="hero-graphic-zone" class="h-[66%] relative bg-slate-900/40 flex flex-col justify-between p-2">
+                <div class="flex justify-between items-center z-10 w-full px-1">
+                    <button onclick="exitHeroDetail()" class="text-white font-bold text-xs bg-black/60 px-3 py-1.5 rounded-xl border border-slate-700">⬅ Anh Hùng</button>
+                    <div class="flex space-x-1">
+                        <span id="det-element" class="bg-blue-600 text-white text-[9px] px-2 py-0.5 rounded-full font-bold shadow">THỦY</span>
+                        <span id="det-job" class="bg-purple-600 text-white text-[9px] px-2 py-0.5 rounded-full font-bold shadow">PHÁP SƯ</span>
+                    </div>
+                </div>
+
+                <div class="flex-1 flex items-center justify-between px-1 w-full relative">
+                    <div id="equip-left" class="hidden flex flex-col space-y-2 z-20 w-12"></div>
+                    <div class="absolute inset-0 flex items-center justify-center pointer-events-none z-0 overflow-hidden">
+                        <img id="det-splash" src="" onerror="this.src='https://via.placeholder.com/300x450?text=Hero+Splash'" class="h-[105%] w-full object-cover filter drop-shadow-[0_15px_15px_rgba(234,179,8,0.2)]">
+                    </div>
+                    <button onclick="openFullscreenHeroImage()" class="absolute bottom-16 right-4 z-30 bg-black/70 hover:bg-black/90 text-white p-2.5 rounded-full border border-slate-700 shadow-xl active:scale-95 transition text-sm">🔍</button>
+                    <div id="equip-right" class="hidden flex flex-col space-y-2 z-20 w-12 items-end"></div>
+                </div>
+
+                <div class="bg-gradient-to-t from-slate-950 via-slate-950/80 to-transparent p-2 pt-8 z-10 flex justify-between items-end absolute bottom-0 inset-x-0">
+                    <div>
+                        <div class="flex items-center space-x-2">
+                            <h2 id="det-name" class="text-white font-black text-sm font-mono">---</h2>
+                            <span id="det-rarity" class="bg-amber-500 text-white text-[11px] px-1.5 py-0.5 rounded font-black">SSR</span>
+			<span id="det-level" class=" right-15 px-1.5 py-0.5 text-[15px] bg-black/70 text-yellow-400  rounded font-mono">Lv.1</span>
+                        </div>
+                        <div id="det-stars" class="text-yellow-400 text-[10px] mt-0.5 tracking-widest"></div>
+                    </div>
+                    <div class="text-right">
+                        <p class="text-[12px] text-slate-400 uppercase tracking-tight">Lực Chiến (BP)</p>
+                        <p id="det-bp" class="text-base font-black text-orange-400 font-mono leading-none">0</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TABS ĐIỀU HƯỚNG TÍNH NĂNG CHỈ SỐ / TRANG BỊ -->
+            <div class="bg-slate-950 border-y border-slate-800 flex text-center text-[10px] font-bold text-slate-400 z-10">
+                <button onclick="switchDetailTab('chiso')" id="tab-det-chiso" class="flex-1 py-2.5 text-yellow-400 border-b-2 border-yellow-400">Thông tin</button>
+                <button onclick="switchDetailTab('trangbi')" id="tab-det-trangbi" class="flex-1 py-2.5">Trang bị</button>
+                <button onclick="switchDetailTab('kynang')" id="tab-det-kynang" class="flex-1 py-2.5">Skill</button>
+                <button onclick="switchDetailTab('rangbuoc')" id="tab-det-rangbuoc" class="flex-1 py-2.5">Ràng buộc</button>
+                <button onclick="switchDetailTab('yeuthich')" id="tab-det-yeuthich" class="flex-1 py-2.5">Yêu thích</button>
+            </div>
+
+            <!-- PANEL THÔNG TIN 27% KHÔNG GIAN -->
+            <div class="h-[27%] p-2.5 overflow-y-auto text-white text-xs bg-slate-950 z-10 flex flex-col justify-between">
+                <div id="panel-det-chiso" class="h-full flex flex-col justify-between space-y-1.5">
+                    <div class="grid grid-cols-2 gap-1.5 bg-slate-900/60 p-2 rounded-xl border border-slate-800/80">
+                        <div><p class="text-slate-400 text-[10px]">⚔️ Tấn Công: <span id="stat-det-atk" class="text-red-400 font-bold font-mono">0</span></p></div>
+                        <div><p class="text-slate-400 text-[10px]">❤️ Máu (HP): <span id="stat-det-hp" class="text-green-400 font-bold font-mono">0</span></p></div>
+                        <div><p class="text-slate-400 text-[10px]">🛡️ Phòng Thủ: <span id="stat-det-def" class="text-blue-400 font-bold font-mono">0</span></p></div>
+                        <div><p class="text-slate-400 text-[10px]">⚡ Tốc độ (SPD): <span id="stat-det-spd" class="text-cyan-400 font-bold font-mono">0</span></p></div>
+                    </div>
+                    <button id="btn-upgrade-hero" onmousedown="startUpgradeHold()" onmouseup="stopUpgradeHold()" onmouseleave="stopUpgradeHold()" ontouchstart="event.preventDefault(); startUpgradeHold()" ontouchend="event.preventDefault(); stopUpgradeHold()" ontouchcancel="stopUpgradeHold()" class="w-full bg-gradient-to-r from-cyan-500 to-blue-600 py-2 rounded-xl font-bold text-xs active:brightness-90 transition text-center shadow-lg">Tăng cấp (Tốn 5,000 🪙)</button>
+                </div>
+
+                <div id="panel-det-trangbi" class="hidden h-full flex flex-col justify-between">
+                    <div class="flex justify-between items-center bg-slate-900 px-2 py-1 rounded-md mb-1 border border-slate-800">
+                        <span class="text-[10px] text-slate-400">Ô chọn: <span id="txt-selected-slot-name" class="text-yellow-400 font-bold">Chưa chọn</span></span>
+                        <button onclick="unequipCurrentSlot()" class="text-[9px] bg-red-950 border border-red-900/50 text-red-400 px-2 py-0.5 rounded">Tháo đồ ô này ✖️</button>
+                    </div>
+                    <div id="filtered-equips-list" class="flex-1 overflow-x-auto flex space-x-2 pb-1 items-center"></div>
+                </div>
+
+                <div id="panel-det-kynang" class="hidden h-full space-y-1">
+                    <div id="skills-list-container" class="space-y-1">
+                        <div class="bg-slate-900 p-2 rounded-lg border border-slate-800 flex justify-between"><span class="text-purple-300 font-bold">🎯 Thiên Phú Thỏ</span><span class="font-mono text-yellow-400">Lv.Max</span></div>
+                    </div>
+                </div>
+                <div id="panel-det-rangbuoc" class="hidden h-full space-y-1"><div class="text-slate-500 text-center italic py-4">Chưa kích hoạt duyên phận</div></div>
+                <div id="panel-det-yeuthich" class="hidden h-full"><div class="bg-slate-900 p-2 rounded-xl border border-slate-800 text-center text-pink-400 font-bold">💖 Thân mật: Lv.<span id="txt-fav-lvl-text">1</span></div></div>
+            </div>
+        </div>
+
+        <!-- THANH CHUYỂN ĐỔI MÀN HÌNH CHÍNH BOTTOM -->
+        <div class="w-full bg-slate-950 p-2 flex justify-around items-center text-white text-[10px] border-t border-slate-800 pb-5 md:pb-2 z-20">
+            <button onclick="switchScreen('lobby')" id="nav-lobby" class="flex flex-col items-center text-slate-500 transition"><span class="text-base">🏠</span><span>Sảnh</span></button>
+            <button onclick="switchScreen('heroes')" id="nav-heroes" class="flex flex-col items-center text-slate-500 transition"><span class="text-base">🎒</span><span>Anh Hùng</span></button>
+            <button onclick="switchScreen('gacha')" id="nav-gacha" class="flex flex-col items-center text-yellow-400 font-bold transition"><span class="text-base">🌌</span><span>Triệu Hồi</span></button>
+            <button onclick="switchScreen('combat')" id="nav-combat" class="flex flex-col items-center text-slate-500 transition"><span class="text-base">⚔️</span><span>Chiến Đấu</span></button>
+            <button onclick="switchScreen('bag')" id="nav-bag" class="flex flex-col items-center text-slate-500 transition"><span class="text-base">💼</span><span>Túi Đồ</span></button>
+        </div>
+
+        <!-- POPUP KẾT QUẢ GACHA -->
+        <div id="gacha-popup" class="hidden fixed inset-0 bg-slate-950 z-[100] flex flex-col justify-between p-4 max-w-[430px] mx-auto left-0 right-0 h-full">
+            <div class="w-full text-center pt-6">
+                <span class="text-white text-xs font-black tracking-widest text-purple-400 block">🌌 KẾT QUẢ TRIỆU HỒI</span>
+            </div>
+            <div id="cards-grid" class="flex-1 flex flex-wrap items-center justify-center gap-x-4 gap-y-6 px-2 overflow-y-auto content-center gacha-perspective"></div>
+            <div class="w-full pb-8 flex flex-col space-y-2">
+                <button id="btn-gacha-skip" onclick="skipFlipAllCards()" class="w-full bg-purple-600 border border-purple-400 text-white text-xs font-bold py-3.5 rounded-xl shadow-lg active:scale-95 transition">⏩ Lật Nhanh Tất Cả (SKIP)</button>
+                <div id="gacha-action-footer" class="hidden w-full grid grid-cols-2 gap-3">
+                    <button id="btn-gacha-again" onclick="rollGachaAgain()" class="bg-gradient-to-r from-amber-500 to-orange-600 text-slate-950 font-black text-xs py-3.5 rounded-xl active:scale-95 transition">🌌 Quay Tiếp</button>
+                    <button onclick="closeGachaPopup()" class="bg-slate-800 border border-slate-600 text-white font-bold text-xs py-3.5 rounded-xl active:scale-95 transition">✖ Thoát</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- LỚP PHỦ FULLSCREEN XEM ẢNH NHÂN VẬT -->
+        <div id="fullscreen-hero-overlay" class="hidden fixed inset-0 bg-black/95 z-[200] flex items-center justify-center cursor-pointer max-w-[430px] mx-auto left-0 right-0 h-full" onclick="closeFullscreenHeroImage()">
+            <img id="fullscreen-hero-img" src="" class="w-full h-full object-contain">
+        </div>
+
+        <!-- HIỆU ỨNG BÙNG NỔ SSR TRÀN MÀN HÌNH -->
+        <div id="ssr-showcase-overlay" class="hidden fixed inset-0 bg-black/95 z-[150] flex flex-col items-center justify-center p-6 cursor-pointer max-w-[430px] mx-auto left-0 right-0 h-full" onclick="handleNextSSR()">
+            <div class="absolute inset-0 bg-radial from-amber-500/20 to-transparent pointer-events-none animate-pulse"></div>
+            <div class="text-center mb-4 z-10 animate-pulse">
+                <p class="text-yellow-400 font-black text-xl tracking-widest drop-shadow-[0_4px_10px_rgba(234,179,8,1)]">✨ TRIỆU HỒI SIÊU CẤP SSR ✨</p>
+                <p class="text-slate-400 text-[10px] mt-1">Chạm vào màn hình để tiếp tục</p>
+            </div>
+            <div id="ssr-visual-container" class="w-full max-w-[320px] h-[460px] bg-slate-900 border-2 border-yellow-400 rounded-2xl overflow-hidden shadow-[0_0_40px_rgba(234,179,8,0.6)] flex flex-col justify-between p-4 relative animate-ssr-fullscreen">
+                <img id="ssr-splash-img" src="" class="absolute inset-0 w-full h-full object-cover z-0">
+                <div class="absolute inset-0 bg-gradient-to-t from-black/90 via-black/10 to-black/30 z-10"></div>
+                <div class="z-20 text-right w-full">
+                    <span class="bg-gradient-to-r from-yellow-500 to-amber-600 text-slate-950 text-[10px] px-2.5 py-1 rounded font-black shadow-md">SSR CARD</span>
+                </div>
+                <div class="z-20 w-full bg-black/50 backdrop-blur-sm p-3 rounded-xl border border-white/10">
+                    <h3 id="ssr-hero-name" class="text-white text-lg font-black tracking-wide">Tên Vật Phẩm</h3>
+                    <p id="ssr-hero-desc" class="text-yellow-400 text-[10px] font-bold mt-1">Hệ thống triệu hồi hoàng gia</p>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        // CƠ SỞ DỮ LIỆU GAME PHỤC VỤ QUAY GACHA VÀ PHẦN THƯỞNG BANNER
+        const HERO_DB = {
+            "Thỏ Ngọc": { rarity: "SSR", element: "KIM", job: "CHIẾN SĨ", atk: 120, hp: 1000, def: 60, spd: 115, avatar: "Assets/img/heroes/thongoc/avatar.png", splash: "Assets/img/heroes/thongoc/splash.png" },
+            "Thetis": { rarity: "SSR", element: "THỦY", job: "PHÁP SƯ", atk: 150, hp: 850, def: 45, spd: 110, avatar: "Assets/img/heroes/thetis/avatar.png", splash: "Assets/img/heroes/thetis/splash.png" },
+            "Arthur": { rarity: "SR", element: "HỎA", job: "KIẾM SĨ", atk: 140, hp: 1100, def: 70, spd: 105, avatar: "", splash: "" },
+            "Merlin": { rarity: "SR", element: "PHONG", job: "PHÁP SƯ", atk: 110, hp: 750, def: 40, spd: 112, avatar: "", splash: "" },
+            "Goku": { rarity: "SR", element: "LÔI", job: "ĐẤU SĨ", atk: 170, hp: 950, def: 50, spd: 120, avatar: "", splash: "" },
+            "Luffy": { rarity: "R", element: "THỦY", job: "DỰ BI", atk: 85, hp: 600, def: 35, spd: 98, avatar: "", splash: "" }
+        };
+
+        const LEFT_SLOTS = [{ id: "mu", name: "Mũ 🪖" }, { id: "ao", name: "Áo 🧥" }, { id: "quan", name: "Quần 👖" }, { id: "giay", name: "Giày 🥾" }];
+        const RIGHT_SLOTS = [{ id: "vukhi", name: "Vũ Khí 🗡️" }, { id: "trangsuc", name: "Trang Sức 📿" }, { id: "bua", name: "Bùa Hộ Mệnh 🧿" }];
+
+        const EQUIP_POOL_TEMPLATES = [
+            { slot: "mu", name: "Mũ Thiên Đế", icon: "🪖", stat: "HP", base: 336, grow: 63, rarity: "SSR" },
+            { slot: "ao", name: "Chiến Bào Bất Diệt", icon: "🧥", stat: "DEF", base: 50, grow: 8, rarity: "SR" },
+            { slot: "vukhi", name: "Thần Kiếm Hiên Viên", icon: "🗡️", stat: "ATK", base: 84, grow: 17, rarity: "SR" },
+            { slot: "trangsuc", name: "Ngọc Bội Trường Sinh", icon: "📿", stat: "HP", base: 210, grow: 34, rarity: "R" },
+            { slot: "bua", name: "Bùa Hộ Mệnh", icon: "🧿", stat: "ATK", base: 42, grow: 8, rarity: "R" }
+        ];
+
+        // TỶ LỆ QUAY GACHA THEO ĐỘ HIẾM (ÁP DỤNG CHUNG CHO BANNER TƯỚNG VÀ TRANG BỊ)
+        const RARITY_RATES = { SSR: 0.05, SR: 0.20, R: 0.75 };
+        // SỐ KIM CƯƠNG QUY ĐỔI CHO 1 LƯỢT QUAY KHI ĐÃ HẾT VÉ TRIỆU HỒI
+        const DIAMOND_COST_PER_ROLL = 150;
+
+        // BỐC NGẪU NHIÊN ĐỘ HIẾM DỰA TRÊN RARITY_RATES (SSR 5% / SR 20% / R 75%)
+        function rollRarityByRate() {
+            const rand = Math.random();
+            if (rand < RARITY_RATES.SSR) return "SSR";
+            if (rand < RARITY_RATES.SSR + RARITY_RATES.SR) return "SR";
+            return "R";
+        }
+
+        // CHỌN NGẪU NHIÊN 1 TƯỚNG TRONG HERO_DB THUỘC ĐÚNG ĐỘ HIẾM ĐÃ BỐC ĐƯỢC
+        function pickHeroByRarity(rarity) {
+            const pool = Object.keys(HERO_DB).filter(name => HERO_DB[name].rarity === rarity);
+            const fallbackPool = pool.length > 0 ? pool : Object.keys(HERO_DB);
+            return fallbackPool[Math.floor(Math.random() * fallbackPool.length)];
+        }
+
+        // CHỌN NGẪU NHIÊN 1 TRANG BỊ TRONG EQUIP_POOL_TEMPLATES THUỘC ĐÚNG ĐỘ HIẾM ĐÃ BỐC ĐƯỢC
+        function pickEquipByRarity(rarity) {
+            const pool = EQUIP_POOL_TEMPLATES.filter(t => t.rarity === rarity);
+            const fallbackPool = pool.length > 0 ? pool : EQUIP_POOL_TEMPLATES;
+            return fallbackPool[Math.floor(Math.random() * fallbackPool.length)];
+        }
+
+        let userStats = { tickets: 200, diamonds: 10000, gold: 100000 };
+        
+        let myHeroes = [
+            { name: "Thỏ Ngọc", level: 39, favorability: 7, yellowStars: 3, redStars: 0, skills: [{ name: "Skill Thỏ", type: "Thiên Phú", lvl: 38 }], equips: { mu: "eq_1", ao: null, quan: null, giay: null, vukhi: "eq_2", trangsuc: null, bua: null } },
+            { name: "Thetis", level: 1, favorability: 1, yellowStars: 1, redStars: 0, skills: [{ name: "Skill Thetis", type: "Thiên Phú", lvl: 1 }], equips: { mu: null, ao: null, quan: null, giay: null, vukhi: null, trangsuc: null, bua: null } }
+        ];
+
+        let myEquipmentInventory = [
+            { id: "eq_1", slot: "mu", name: "Mũ Thép Sinh Mệnh", icon: "🪖", level: 15, stat: "HP", base: 200, grow: 35, rarity: "SSR" },
+            { id: "eq_2", slot: "vukhi", name: "Thần Kiếm Hiên Viên", icon: "🗡️", level: 20, stat: "ATK", base: 60, grow: 12, rarity: "SSR" }
+        ];
+
+        let myMaterials = { "Hồn Thạch": 50, "Vé Triệu Hồi": 200, "Kim Cương": 10000, "Vàng": 100000 };
+
+        const MATERIAL_DB = {
+            "Hồn Thạch": { icon: "💠", desc: "Vật liệu đột phá cấp độ Anh Hùng." },
+            "Vé Triệu Hồi": { icon: "🎫", desc: "Vật phẩm dùng để gacha." },
+            "Kim Cương": { icon: "💎", desc: "Tiền tệ cao cấp." },
+            "Vàng": { icon: "🪙", desc: "Tiền tệ thông dụng." }
+        };
+
+        const MAX_HERO_LEVEL = 100;
+        let selectedHeroIndex = 0;
+        let selectedSlotId = ""; 
+        let currentRollResults = [];
+        let currentBanner = "tuong_thu";
+        let lastRollCount = 1;
+        let flippedCount = 0;
+        let ssrQueue = []; // Hàng đợi xử lý hiển thị nổ hũ SSR tràn màn hình
+
+        function calculateFinalStats(heroIndex) {
+            const hero = myHeroes[heroIndex];
+            const db = HERO_DB[hero.name];
+            if (!db) return { atk:0, hp:0, def:0, spd:0, bp:0 };
+            let lvlBonus = hero.level - 1;
+            let baseAtk = db.atk + (lvlBonus * 8);
+            let baseHp = db.hp + (lvlBonus * 45);
+            let baseDef = db.def + (lvlBonus * 4);
+            let baseSpd = db.spd + (lvlBonus * 1);
+            let totalStarsCount = (hero.yellowStars - 1) + hero.redStars;
+            let starMultiplier = 1 + (totalStarsCount * 0.05);
+
+            let finalAtk = baseAtk * starMultiplier;
+            let finalHp = baseHp * starMultiplier;
+            let finalDef = baseDef * starMultiplier;
+            let finalSpd = baseSpd * starMultiplier;
+
+            for (let slot in hero.equips) {
+                let eqId = hero.equips[slot];
+                if (eqId) {
+                    let eqItem = myEquipmentInventory.find(e => e.id === eqId);
+                    if (eqItem) {
+                        let itemStatValue = eqItem.base + ((eqItem.level - 1) * eqItem.grow);
+                        if (eqItem.stat === "ATK") finalAtk += itemStatValue;
+                        if (eqItem.stat === "HP") finalHp += itemStatValue;
+                        if (eqItem.stat === "DEF") finalDef += itemStatValue;
+                        if (eqItem.stat === "SPD") finalSpd += itemStatValue;
+                    }
+                }
+            }
+            return { atk: Math.floor(finalAtk), hp: Math.floor(finalHp), def: Math.floor(finalDef), spd: Math.floor(finalSpd), bp: Math.floor((finalAtk * 5) + (finalHp * 1) + (finalDef * 3) + (finalSpd * 10)) };
+        }
+
+        // ================= HỆ THỐNG LƯU TRỮ DỮ LIỆU (localStorage) =================
+        // Toàn bộ tiến trình game (tướng, trang bị, vé, kim cương, vàng, vật liệu)
+        // được lưu vào localStorage của trình duyệt để không bị mất khi tải lại trang.
+        const SAVE_KEY = "ganme_gacha_save_v1";
+
+        function saveGameState() {
+            try {
+                const saveData = { userStats, myHeroes, myEquipmentInventory, myMaterials, savedAt: Date.now() };
+                localStorage.setItem(SAVE_KEY, JSON.stringify(saveData));
+            } catch (e) {
+                console.error("Lỗi khi lưu dữ liệu game:", e);
+            }
+        }
+
+        function loadGameState() {
+            try {
+                const raw = localStorage.getItem(SAVE_KEY);
+                if (!raw) return false;
+                const data = JSON.parse(raw);
+                if (data.userStats) userStats = data.userStats;
+                if (data.myHeroes) myHeroes = data.myHeroes;
+                if (data.myEquipmentInventory) myEquipmentInventory = data.myEquipmentInventory;
+                if (data.myMaterials) myMaterials = data.myMaterials;
+                return true;
+            } catch (e) {
+                console.error("Lỗi khi đọc dữ liệu đã lưu, sẽ dùng dữ liệu mặc định:", e);
+                return false;
+            }
+        }
+
+        function resetGameState() {
+            if (!confirm("Bạn có chắc muốn xoá toàn bộ dữ liệu và chơi lại từ đầu không? Hành động này không thể hoàn tác.")) return;
+            localStorage.removeItem(SAVE_KEY);
+            location.reload();
+        }
+
+        function updateUI() {
+            document.getElementById('txt-ve-quay').innerText = userStats.tickets;
+            document.getElementById('txt-kim-cuong').innerText = userStats.diamonds;
+            document.getElementById('txt-vang').innerText = userStats.gold.toLocaleString('vi-VN');
+            document.getElementById('txt-count-tuong').innerText = myHeroes.length;
+
+            // KHI HẾT VÉ TRIỆU HỒI, XÓA KHỎI TÚI VẬT LIỆU ĐỂ KHÔNG HIỂN THỊ (0 VÉ)
+            if (userStats.tickets > 0) {
+                myMaterials["Vé Triệu Hồi"] = userStats.tickets;
+            } else {
+                delete myMaterials["Vé Triệu Hồi"];
+            }
+            myMaterials["Kim Cương"] = userStats.diamonds;
+            myMaterials["Vàng"] = userStats.gold;
+
+            let totalTeamBP = 0;
+            myHeroes.forEach((_, idx) => { totalTeamBP += calculateFinalStats(idx).bp; });
+            document.getElementById('txt-total-bp').innerText = totalTeamBP.toLocaleString('vi-VN');
+
+            saveGameState(); // TỰ ĐỘNG LƯU LẠI SAU MỖI LẦN CẬP NHẬT TRẠNG THÁI
+        }
+
+        function switchScreen(screen) {
+            ["lobby", "gacha", "heroes", "combat", "bag"].forEach(id => document.getElementById(`view-${id}`).classList.add('hidden'));
+            ["lobby", "gacha", "heroes", "combat", "bag"].forEach(id => document.getElementById(`nav-${id}`).className = "flex flex-col items-center text-slate-500");
+            document.getElementById(`view-${screen}`).classList.remove('hidden');
+            document.getElementById(`nav-${screen}`).className = "flex flex-col items-center text-yellow-400 font-bold";
+            if (screen === 'heroes') renderHeroesList();
+            if (screen === 'bag') switchBagTab('vatlieu');
+        }
+
+        function switchBagTab(tabId) {
+            ["vatlieu", "trangbi", "hopqua"].forEach(id => {
+                document.getElementById(`tab-bag-${id}`).className = "flex-1 py-2.5 text-slate-400 border-b-2 border-transparent";
+                document.getElementById(`panel-bag-${id}`).classList.add('hidden');
+            });
+            document.getElementById(`tab-bag-${tabId}`).className = "flex-1 py-2.5 text-yellow-400 border-b-2 border-yellow-400 bg-slate-900/30";
+            document.getElementById(`panel-bag-${tabId}`).classList.remove('hidden');
+            if (tabId === "vatlieu") renderMaterialsList();
+            if (tabId === "trangbi") renderBagEquipList();
+        }
+
+        function renderMaterialsList() {
+            const grid = document.getElementById('materials-list-grid'); grid.innerHTML = "";
+            Object.keys(myMaterials).forEach(matName => {
+                const info = MATERIAL_DB[matName] || { icon: "❔", desc: "" };
+                const displayVal = typeof myMaterials[matName] === "number" ? myMaterials[matName].toLocaleString('vi-VN') : myMaterials[matName];
+                grid.innerHTML += `
+                    <div class="bg-slate-900 border border-slate-800 rounded-xl p-2 text-center flex flex-col items-center justify-center aspect-square">
+                        <span class="text-2xl">${info.icon}</span>
+                        <p class="text-[8px] text-slate-300 font-bold mt-1 truncate w-full">${matName}</p>
+                        <p class="text-[10px] text-cyan-400 font-mono font-bold">${displayVal}</p>
+                    </div>`;
+            });
+        }
+
+        function getEquipWearer(itemId) { return myHeroes.find(h => Object.values(h.equips).includes(itemId)); }
+
+        function renderBagEquipList() {
+            const grid = document.getElementById('bag-equip-list'); grid.innerHTML = "";
+            if (myEquipmentInventory.length === 0) { grid.innerHTML = `<p class="col-span-3 text-center text-slate-500 italic text-[10px] py-6">Túi trống.</p>`; return; }
+            myEquipmentInventory.forEach(item => {
+                const wearer = getEquipWearer(item.id);
+                const currentStatVal = item.base + ((item.level - 1) * item.grow);
+                grid.innerHTML += `
+                    <div class="border ${item.rarity === 'SSR' ? 'border-yellow-500':'border-slate-700'} bg-slate-900 rounded-lg p-2 text-center flex flex-col justify-between h-[112px]">
+                        <div>
+                            <span class="text-[7px] font-mono font-black tracking-tighter text-slate-400">${item.rarity}</span>
+                            <span class="text-xl block my-0.5">${item.icon}</span>
+                            <p class="text-[7px] text-white font-bold truncate w-full">${item.name}</p>
+                            <p class="text-[7px] text-cyan-400 font-mono">+${currentStatVal} ${item.stat}</p>
+                        </div>
+                        ${wearer ? `<p class="text-[7px] text-emerald-400 font-bold truncate w-full">👤 ${wearer.name}</p>` : ''}
+                    </div>`;
+            });
+        }
+
+        function renderHeroesList() {
+            const grid = document.getElementById('heroes-list-grid'); grid.innerHTML = "";
+            myHeroes.forEach((hero, index) => {
+                const db = HERO_DB[hero.name] || { avatar: "", rarity: "R" };
+                grid.innerHTML += `
+                    <div onclick="openHeroDetail(${index})" class="border-2 border-purple-600 bg-slate-800 rounded-xl p-1 flex flex-col items-center justify-center text-center aspect-[3/4] cursor-pointer relative overflow-hidden">
+                        <img src="${db.avatar}" onerror="this.src='https://via.placeholder.com/80?text=${hero.name}'" class="w-full h-20 object-cover rounded-md mb-1">
+                        <p class="text-[9px] font-bold text-white truncate w-full">${hero.name}</p>
+                        <span class="absolute bottom-0.5 right-1 text-[8px] bg-black/70 text-yellow-400 px-1 rounded font-mono">Lv.${hero.level}</span>
+                    </div>`;
+            });
+        }
+
+        function openFullscreenHeroImage() {
+            const hero = myHeroes[selectedHeroIndex];
+            const db = HERO_DB[hero.name];
+            if(db && db.splash) {
+                document.getElementById('fullscreen-hero-img').src = db.splash;
+                document.getElementById('fullscreen-hero-overlay').classList.remove('hidden');
+            }
+        }
+
+        function closeFullscreenHeroImage() { document.getElementById('fullscreen-hero-overlay').classList.add('hidden'); }
+
+        function openHeroDetail(index) {
+            selectedHeroIndex = index;
+            selectedSlotId = ""; 
+            document.getElementById('view-hero-detail').classList.remove('hidden');
+            renderHeroDetailData();
+            switchDetailTab('chiso');
+        }
+
+        function exitHeroDetail() {
+            document.getElementById('view-hero-detail').classList.add('hidden');
+            renderHeroesList();
+            updateUI();
+        }
+
+        function switchDetailTab(tabId) {
+            ["chiso", "trangbi", "kynang", "rangbuoc", "yeuthich"].forEach(id => {
+                document.getElementById(`tab-det-${id}`).className = "flex-1 py-2.5 text-slate-400 border-b-2 border-transparent";
+            });
+            document.getElementById(`tab-det-${tabId}`).className = "flex-1 py-2.5 text-yellow-400 border-b-2 border-yellow-400 bg-slate-900/30";
+            ["chiso", "trangbi", "kynang", "rangbuoc", "yeuthich"].forEach(id => document.getElementById(`panel-det-${id}`).classList.add('hidden'));
+            document.getElementById(`panel-det-${tabId}`).classList.remove('hidden');
+            
+            const leftEquipPanel = document.getElementById('equip-left');
+            const rightEquipPanel = document.getElementById('equip-right');
+
+            if(tabId === "trangbi") {
+                leftEquipPanel.classList.remove('hidden');
+                rightEquipPanel.classList.remove('hidden');
+                document.getElementById('txt-selected-slot-name').innerText = "Chưa chọn ô";
+                document.getElementById('filtered-equips-list').innerHTML = `<p class="text-slate-500 italic text-center py-4 w-full text-[10px]">Hãy nhấn chọn vào các ô trang bị ở trên ảnh nhân vật.</p>`;
+            } else {
+                leftEquipPanel.classList.add('hidden');
+                rightEquipPanel.classList.add('hidden');
+            }
+        }
+
+        function renderHeroDetailData() {
+            const hero = myHeroes[selectedHeroIndex];
+            const db = HERO_DB[hero.name] || { element: "KIM", job: "DẤU SĨ", splash: "" };
+            const computed = calculateFinalStats(selectedHeroIndex);
+
+            document.getElementById('det-name').innerText = hero.name;
+            document.getElementById('det-level').innerText = `Lv.${hero.level}`;
+            document.getElementById('det-splash').src = db.splash;
+            document.getElementById('det-element').innerText = db.element;
+            document.getElementById('det-job').innerText = db.job;
+            document.getElementById('det-bp').innerText = computed.bp.toLocaleString('vi-VN');
+
+            document.getElementById('det-stars').innerHTML = `<span class="text-yellow-400">${"⭐".repeat(hero.yellowStars)}</span>`;
+            document.getElementById('stat-det-atk').innerText = computed.atk;
+            document.getElementById('stat-det-hp').innerText = computed.hp;
+            document.getElementById('stat-det-def').innerText = computed.def;
+            document.getElementById('stat-det-spd').innerText = computed.spd;
+
+            const renderSlots = (containerId, slotsArray) => {
+                const zone = document.getElementById(containerId); zone.innerHTML = "";
+                slotsArray.forEach(slot => {
+                    let eqId = hero.equips[slot.id];
+                    let eqItem = myEquipmentInventory.find(e => e.id === eqId);
+                    let borderStyle = (slot.id === selectedSlotId) ? "border-yellow-400 bg-slate-900 text-yellow-400" : "border-slate-700 bg-black/60 text-slate-300";
+                    zone.innerHTML += `
+                        <div id="slot-btn-${slot.id}" onclick="selectEquipSlot('${slot.id}')" class="w-11 h-11 border-2 ${borderStyle} rounded-xl flex flex-col items-center justify-center cursor-pointer transition backdrop-blur-sm">
+                            <span class="text-[7px] font-bold leading-none">${slot.name.split(' ')[0]}</span>
+                            <span class="text-xs mt-0.5">${eqItem ? eqItem.icon : '➕'}</span>
+                        </div>`;
+                });
+            };
+            renderSlots('equip-left', LEFT_SLOTS);
+            renderSlots('equip-right', RIGHT_SLOTS);
+            document.getElementById('txt-fav-lvl-text').innerText = hero.favorability;
+        }
+
+        function selectEquipSlot(slotId) {
+            selectedSlotId = slotId;
+            let allSlots = [...LEFT_SLOTS, ...RIGHT_SLOTS];
+            let target = allSlots.find(s => s.id === slotId);
+            document.getElementById('txt-selected-slot-name').innerText = target ? target.name : "Chưa chọn";
+            renderHeroDetailData();
+            renderFilteredEquipmentList();
+        }
+
+        function renderFilteredEquipmentList() {
+            const container = document.getElementById('filtered-equips-list'); container.innerHTML = "";
+            if(!selectedSlotId) return;
+
+            let filtered = myEquipmentInventory.filter(eq => eq.slot === selectedSlotId);
+            if(filtered.length === 0) {
+                container.innerHTML = `<p class="text-slate-500 italic text-center py-4 w-full text-[10px]">Không có trang bị phù hợp!</p>`;
+                return;
+            }
+            const currentHeroName = myHeroes[selectedHeroIndex].name;
+            filtered.forEach(item => {
+                let wearer = getEquipWearer(item.id);
+                let isCurrent = wearer && wearer.name === currentHeroName;
+                // TRANG BỊ ĐANG ĐƯỢC TƯỚNG KHÁC ĐEO (KHÁC VỚI TƯỚNG ĐANG XEM)
+                let wornByOther = wearer && !isCurrent;
+                let currentStatVal = item.base + ((item.level - 1) * item.grow);
+                container.innerHTML += `
+                    <div class="border ${isCurrent ? 'border-emerald-500 bg-emerald-950/20': wornByOther ? 'border-orange-500 bg-orange-950/10' : 'border-slate-700 bg-slate-900'} p-1.5 rounded-lg min-w-[95px] shrink-0 text-center h-[90px] flex flex-col justify-between">
+                        <div>
+                            <p class="text-[7px] text-white font-bold truncate w-full">${item.name}</p>
+                            <p class="text-[8px] text-cyan-400 font-bold font-mono">+${currentStatVal} ${item.stat}</p>
+                            ${wornByOther ? `<p class="text-[7px] text-orange-400 font-bold truncate w-full">👤 ${wearer.name}</p>` : ''}
+                        </div>
+                        <button onclick="equipItemAction('${item.id}')" class="w-full text-[8px] font-bold py-0.5 rounded text-white ${isCurrent ? 'bg-red-800': wornByOther ? 'bg-orange-700' : 'bg-cyan-700'}">${isCurrent ? 'Tháo': wornByOther ? 'Đổi chủ' : 'Đeo'}</button>
+                    </div>`;
+            });
+        }
+
+        function equipItemAction(itemId) {
+            const currentHero = myHeroes[selectedHeroIndex];
+            if (currentHero.equips[selectedSlotId] === itemId) {
+                // ĐANG ĐEO SẴN -> THÁO RA
+                currentHero.equips[selectedSlotId] = null;
+            } else {
+                // KIỂM TRA XEM TRANG BỊ NÀY CÓ ĐANG ĐƯỢC TƯỚNG KHÁC ĐEO KHÔNG
+                const wearer = getEquipWearer(itemId);
+                if (wearer && wearer.name !== currentHero.name) {
+                    const confirmed = confirm(`Trang bị này đang được "${wearer.name}" sử dụng.\nBạn có muốn chuyển sang cho "${currentHero.name}" không?\n(Ô trang bị tương ứng của "${wearer.name}" sẽ bị trống)`);
+                    if (!confirmed) return;
+                    // GỠ TRANG BỊ KHỎI TƯỚNG CŨ TRƯỚC KHI GÁN CHO TƯỚNG MỚI
+                    Object.keys(wearer.equips).forEach(slotKey => {
+                        if (wearer.equips[slotKey] === itemId) wearer.equips[slotKey] = null;
+                    });
+                }
+                currentHero.equips[selectedSlotId] = itemId;
+            }
+            renderHeroDetailData(); renderFilteredEquipmentList(); updateUI();
+        }
+
+        function unequipCurrentSlot() { 
+            if(!selectedSlotId) return;
+            myHeroes[selectedHeroIndex].equips[selectedSlotId] = null; 
+            renderHeroDetailData(); renderFilteredEquipmentList(); updateUI(); 
+        }
+
+        let upgradeHoldTimeout = null, upgradeHoldInterval = null;
+        function upgradeHeroLevel() {
+            const hero = myHeroes[selectedHeroIndex];
+            if (hero.level >= MAX_HERO_LEVEL || userStats.gold < 5000) { stopUpgradeHold(); return; }
+            userStats.gold -= 5000; hero.level++;
+            renderHeroDetailData(); updateUI();
+        }
+        function startUpgradeHold() { stopUpgradeHold(); upgradeHeroLevel(); upgradeHoldTimeout = setTimeout(() => { upgradeHoldInterval = setInterval(upgradeHeroLevel, 100); }, 350); }
+        function stopUpgradeHold() { clearTimeout(upgradeHoldTimeout); clearInterval(upgradeHoldInterval); }
+
+        function switchBanner(type) {
+            currentBanner = type;
+            document.getElementById('tab-tuong_thu').className = `flex-1 text-center py-1.5 rounded-lg font-bold text-xs transition ${type==='tuong_thu'?'bg-purple-600 text-white border border-purple-400':'bg-slate-800 text-slate-400'}`;
+            document.getElementById('tab-trang_bi').className = `flex-1 text-center py-1.5 rounded-lg font-bold text-xs transition ${type==='trang_bi'?'bg-purple-600 text-white border border-purple-400':'bg-slate-800 text-slate-400'}`;
+            document.getElementById('banner-img').src = type === "tuong_thu" ? "Assets/img/heroes/thetis/splash.png" : "https://via.placeholder.com/200x300?text=Weapon+Banner";
+            document.getElementById('banner-tag').innerText = type === "tuong_thu" ? "HERO SUMMON" : "EQUIPMENT SUMMON";
+        }
+
+        // CHỈNH SỬA TOÀN BỘ LOGIC GACHA ĐỂ SỬA LỖI QUAY RA VẬT PHẨM ĐÚNG THEO BANNER ĐANG CHỌN
+        function handleGacha(times) {
+            // TÍNH SỐ VÉ CÓ THỂ DÙNG, PHẦN CÒN THIẾU SẼ TỰ ĐỘNG QUY ĐỔI SANG KIM CƯƠNG
+            const ticketsToUse = Math.min(userStats.tickets, times);
+            const rollsNeedingDiamond = times - ticketsToUse;
+            const diamondsNeeded = rollsNeedingDiamond * DIAMOND_COST_PER_ROLL;
+
+            if (rollsNeedingDiamond > 0 && userStats.diamonds < diamondsNeeded) {
+                alert(`Không đủ vé và kim cương! Cần thêm ${(diamondsNeeded - userStats.diamonds).toLocaleString('vi-VN')} 💎 kim cương để quay.`);
+                return;
+            }
+
+            userStats.tickets -= ticketsToUse;
+            userStats.diamonds -= diamondsNeeded;
+
+            currentRollResults = [];
+            lastRollCount = times; 
+            flippedCount = 0;
+            ssrQueue = []; // Làm trống hàng đợi bùng nổ SSR mới
+
+            for(let i = 0; i < times; i++) {
+                // BỐC ĐỘ HIẾM TRƯỚC THEO TỶ LỆ SSR 5% / SR 20% / R 75%
+                const rolledRarity = rollRarityByRate();
+
+                if (currentBanner === "tuong_thu") {
+                    // Logic Gacha Banner Tướng
+                    const randomName = pickHeroByRarity(rolledRarity);
+                    const template = HERO_DB[randomName];
+                    
+                    // Kiểm tra nếu đã sở hữu tướng thì tự động cộng thêm sao, nếu chưa thì thêm mới vào đội hình
+                    let owned = myHeroes.find(h => h.name === randomName);
+                    if (owned) {
+                        if (owned.yellowStars < 5) owned.yellowStars++;
+                    } else {
+                        myHeroes.push({ name: randomName, level: 1, favorability: 1, yellowStars: 1, redStars: 0, skills: [{ name: "Thiên Phú", type: "Chủ Động", lvl: 1 }], equips: { mu: null, ao: null, quan: null, giay: null, vukhi: null, trangsuc: null, bua: null } });
+                    }
+
+                    const resultItem = { name: randomName, sub: `Hệ ${template.element} - ${template.job}`, icon: "👤", type: "HERO", rarity: template.rarity, splash: template.splash };
+                    currentRollResults.push(resultItem);
+                    if (template.rarity === "SSR") ssrQueue.push(resultItem);
+
+                } else {
+                    // Logic Gacha Banner Trang Bị
+                    let tmp = pickEquipByRarity(rolledRarity);
+                    let newEquipmentId = "eq_rolled_" + Date.now() + "_" + Math.floor(Math.random()*1000);
+                    
+                    const newEquip = { id: newEquipmentId, slot: tmp.slot, name: tmp.name, icon: tmp.icon, level: 1, stat: tmp.stat, base: tmp.base, grow: tmp.grow, rarity: tmp.rarity };
+                    myEquipmentInventory.push(newEquip);
+
+                    const resultItem = { name: tmp.name, sub: `Tăng ${tmp.stat}`, icon: tmp.icon, type: "EQUIP", rarity: tmp.rarity, splash: "" };
+                    currentRollResults.push(resultItem);
+                    if (tmp.rarity === "SSR") ssrQueue.push(resultItem);
+                }
+            }
+            updateUI(); 
+            openGachaPopup();
+        }
+
+        function openGachaPopup() {
+            document.getElementById('gacha-action-footer').classList.add('hidden');
+            document.getElementById('btn-gacha-skip').classList.remove('hidden');
+            const popup = document.getElementById('gacha-popup');
+            const grid = document.getElementById('cards-grid');
+            popup.classList.remove('hidden'); 
+            grid.innerHTML = "";
+
+            currentRollResults.forEach((item, index) => {
+                grid.innerHTML += `
+                    <div class="w-16 h-24 cursor-pointer" onclick="flipSingleCard(${index})">
+                        <div id="card-inner-${index}" class="card-inner w-full h-full relative aspect-[5/7]">
+                            <div class="card-front bg-slate-800 border ${item.rarity === 'SSR' ? 'border-yellow-400' : 'border-purple-500'} p-1 flex flex-col items-center justify-between shadow-lg text-center">
+                                <span class="text-[7px] font-mono font-black ${item.rarity === 'SSR' ? 'text-yellow-400':'text-purple-400'}">${item.rarity}</span>
+                                <span class="text-xl my-0.5">${item.icon}</span>
+                                <p class="text-[7px] text-white font-bold leading-tight truncate w-full">${item.name}</p>
+                            </div>
+                            <div class="card-back"><span class="text-base text-purple-400">🔮</span></div>
+                        </div>
+                    </div>`;
+            });
+        }
+
+        function flipSingleCard(index) {
+            const inner = document.getElementById(`card-inner-${index}`);
+            if (inner && !inner.classList.contains('card-flipped')) {
+                inner.classList.add('card-flipped');
+                flippedCount++;
+                checkAllCardsFlipped();
+            }
+        }
+
+        function skipFlipAllCards() {
+            currentRollResults.forEach((item, index) => {
+                const inner = document.getElementById(`card-inner-${index}`);
+                if (inner && !inner.classList.contains('card-flipped')) {
+                    inner.classList.add('card-flipped');
+                    flippedCount++;
+                }
+            });
+            checkAllCardsFlipped();
+        }
+
+        function checkAllCardsFlipped() {
+            if (flippedCount >= currentRollResults.length) {
+                document.getElementById('gacha-action-footer').classList.remove('hidden');
+                document.getElementById('btn-gacha-skip').classList.add('hidden'); 
+                // Nếu trong danh sách lật bài có SSR, kích hoạt hiệu ứng bùng nổ tràn màn hình ngay lập tức
+                if (ssrQueue.length > 0) { handleNextSSR(); }
+            }
+        }
+
+        // HÀM HIỂN THỊ HIỆU ỨNG NỔ HŨ SSR TRÀN MÀN HÌNH THEO HÀNG ĐỢI KHI QUAY TRÚNG VẬT PHẨM HIẾM
+        function handleNextSSR() {
+            if (ssrQueue.length === 0) {
+                document.getElementById('ssr-showcase-overlay').classList.add('hidden');
+                return;
+            }
+            const currentSsr = ssrQueue.shift();
+            document.getElementById('ssr-hero-name').innerText = currentSsr.name;
+            document.getElementById('ssr-hero-desc').innerText = currentSsr.sub;
+            document.getElementById('ssr-splash-img').src = currentSsr.splash || "https://via.placeholder.com/300x450?text=SSR+Vật+Phẩm";
+            document.getElementById('ssr-showcase-overlay').classList.remove('hidden');
+        }
+
+        function rollGachaAgain() { handleGacha(lastRollCount); }
+        function closeGachaPopup() { document.getElementById('gacha-popup').classList.add('hidden'); }
+
+        function quickDeleteEquipByRarity(rarity) {
+            myEquipmentInventory = myEquipmentInventory.filter(eq => eq.rarity !== rarity || getEquipWearer(eq.id) !== undefined);
+            renderBagEquipList();
+            updateUI();
+        }
+
+        loadGameState(); // NẠP DỮ LIỆU ĐÃ LƯU (NẾU CÓ) TRƯỚC KHI HIỂN THỊ MÀN HÌNH ĐẦU TIÊN
+        switchScreen('gacha');
+        updateUI();
+    </script>
+</body>
+</html>
