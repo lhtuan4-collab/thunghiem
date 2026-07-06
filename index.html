@@ -33,6 +33,30 @@
             100% { transform: scale(1); opacity: 1; filter: brightness(1); }
         }
         .animate-ssr-fullscreen { animation: ssr-explode 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; }
+
+        /* HIỆU ỨNG CHIẾN ĐẤU: ảnh tướng/quái nhấc lên rồi hạ về vị trí cũ khi ra đòn tấn công */
+        @keyframes battleAttackLift {
+            0% { transform: translateY(0) scale(1); }
+            35% { transform: translateY(-16px) scale(1.06); }
+            100% { transform: translateY(0) scale(1); }
+        }
+        .battle-attacking { animation: battleAttackLift 0.45s ease-out; z-index: 20; }
+        /* SỐ SÁT THƯƠNG NỔI LÊN PHÍA TRÊN ẢNH MỤC TIÊU BỊ ĐÁNH TRÚNG RỒI MỜ DẦN BAY LÊN */
+        @keyframes battleDmgFloat {
+            0% { transform: translate(-50%, 0); opacity: 1; }
+            100% { transform: translate(-50%, -34px); opacity: 0; }
+        }
+        .battle-dmg-float { position: absolute; left: 50%; top: -6px; animation: battleDmgFloat 0.8s ease-out forwards; pointer-events: none; z-index: 30; white-space: nowrap; text-shadow: 0 2px 4px rgba(0,0,0,0.8); }
+
+        /* BANNER TÊN KỸ NĂNG NỔI GIỮA MÀN HÌNH: phóng to nhẹ rồi giữ 1 lúc và mờ dần */
+        @keyframes skillBannerPop {
+            0% { transform: scale(0.6); opacity: 0; }
+            25% { transform: scale(1.08); opacity: 1; }
+            40% { transform: scale(1); opacity: 1; }
+            80% { transform: scale(1); opacity: 1; }
+            100% { transform: scale(1); opacity: 0; }
+        }
+        .skill-banner-pop { display: inline-block; animation: skillBannerPop 0.9s ease-out forwards; }
     </style>
 </head>
 <body class="flex justify-center items-center w-screen">
@@ -55,17 +79,31 @@
             </div>
         </div>
 
-        <!-- MÀN HÌNH SẢNH CHÍNH -->
-        <div id="view-lobby" class="hidden flex-1 flex flex-col justify-between p-4 bg-gradient-to-b from-slate-950 to-slate-900 text-white">
-            <div class="text-center mt-10">
-                <h1 class="text-xl font-black text-yellow-400 tracking-wider">SẢNH CHÍNH GAME RPG</h1>
-                <p class="text-xs text-slate-400 mt-2">Chào mừng ThinhLamTich trở lại vương quốc!</p>
-            </div>
-            <div class="bg-slate-950/50 border border-slate-800 rounded-2xl p-4 text-center">
-                <span class="text-5xl block animate-pulse">🏰</span>
-                <p class="text-[11px] text-slate-400 mt-2">Hệ thống thành trì và tài nguyên đang vận hành ổn định.</p>
-            </div>
-            <div class="h-10"></div>
+        <!-- ================================================================================= -->
+        <!-- MÀN HÌNH SẢNH CHÍNH (LOBBY)                                                        -->
+        <!-- Ảnh nền lấy từ: Assets/img/background.png (bg-cover + bg-center = phủ kín & canh giữa) -->
+        <!-- Đã bỏ toàn bộ tiêu đề/chữ giới thiệu theo yêu cầu, chỉ còn ảnh nền + các nút vô hình -->
+        <!-- ================================================================================= -->
+        <div id="view-lobby" class="hidden flex-1 relative bg-cover bg-center bg-no-repeat" style="background-image: url('Assets/img/background.png');">
+
+            <!-- ============================================================================= -->
+            <!-- NÚT VÔ HÌNH "ĐÀI CHIÊU MỘ" - đè lên đúng vị trí đài chiêu mộ trong ảnh nền        -->
+            <!-- Bấm vào sẽ mở màn hình Triệu Hồi (view-gacha) thay cho nút "Chiêu Mộ" cũ ở Nav Bar -->
+            <!-- CHỈNH TỌA ĐỘ TẠI ĐÂY (đơn vị %, tính theo khung màn hình):                        -->
+            <!--   top / left  = vị trí góc trên-trái của vùng bấm                                 -->
+            <!--   width / height = kích thước vùng bấm                                             -->
+            <!-- MẸO CANH CHỈNH: tạm đổi class "opacity-0" thành "opacity-50 bg-red-500" bên dưới   -->
+            <!-- để nhìn thấy khung vùng bấm màu đỏ trong lúc canh cho khớp ảnh, xong nhớ đổi lại.   -->
+            <!-- ============================================================================= -->
+            <button onclick="switchScreen('gacha')"
+                class="absolute opacity-0"
+                style="top: 70%; left: 55%; width: 30%; height: 20%;"
+                aria-label="Đài Chiêu Mộ"
+                title="Đài Chiêu Mộ">
+            </button>
+
+            <!-- Có thể copy nút bên trên để thêm các vùng bấm vô hình khác (VD: Nhiệm vụ, Thư viện, ...) -->
+
         </div>
 
         <!-- MÀN HÌNH TRIỆU HỒI -->
@@ -92,23 +130,122 @@
 
         <!-- MÀN HÌNH DANH SÁCH ANH HÙNG -->
         <div id="view-heroes" class="hidden flex-1 flex flex-col justify-between relative overflow-hidden bg-gradient-to-b from-slate-950 to-slate-900">
-            <div class="w-full bg-slate-950 p-3 border-b border-slate-900">
+            <div class="w-full bg-slate-950 p-3 border-b border-slate-900 flex items-center justify-between">
                 <span class="text-white font-bold text-sm">🎒 Danh Sách Anh Hùng Đang Có (<span id="txt-count-tuong" class="text-yellow-400 font-mono">2</span>)</span>
+                <button onclick="openHeroExchange()" class="text-[9px] bg-rose-950 border border-rose-700 text-rose-300 px-2 py-1.5 rounded whitespace-nowrap shrink-0 font-bold">🏅 <span id="txt-huy-chuong-header">0</span> · Đổi Tướng</button>
             </div>
             <div id="heroes-list-grid" class="flex-1 p-3 gap-3 grid grid-cols-4 content-start overflow-y-auto"></div>
         </div>
 
-        <!-- MÀN HÌNH CHIẾN ĐẤU -->
-        <div id="view-combat" class="hidden flex-1 flex flex-col justify-between p-4 bg-gradient-to-b from-slate-950 to-slate-900 text-white">
-            <div class="text-center mt-10">
-                <h1 class="text-xl font-black text-red-500 tracking-wider">PHÒNG THÍ NGHIỆM CHIẾN ĐẤU</h1>
-                <p class="text-xs text-slate-400 mt-2">Lập đội hình thách thức các phó bản cốt truyện.</p>
+        <!-- POPUP ĐỔI TƯỚNG BẰNG HUY CHƯƠNG -->
+        <div id="hero-exchange-popup" class="hidden fixed inset-0 bg-slate-950/95 z-[110] flex flex-col max-w-[430px] mx-auto left-0 right-0 h-full">
+            <div class="w-full bg-slate-950 p-3 border-b border-slate-800 flex items-center justify-between">
+                <span class="text-white font-bold text-sm">🏅 Đổi Tướng Bằng Huy Chương (<span id="txt-huy-chuong-popup" class="text-rose-400 font-mono">0</span>)</span>
+                <button onclick="closeHeroExchange()" class="text-[10px] bg-slate-800 border border-slate-700 text-slate-300 px-2 py-1 rounded">Đóng ✖️</button>
             </div>
-            <div class="bg-slate-950/50 border border-red-900/40 rounded-2xl p-6 text-center">
-                <span class="text-5xl block animate-bounce-slow">⚔️</span>
-                <p class="text-xs text-red-400 font-bold mt-4">Chế độ cốt truyện chương 1 đang mở!</p>
+            <div id="hero-exchange-list" class="flex-1 overflow-y-auto p-3 grid grid-cols-1 gap-2"></div>
+        </div>
+
+        <!-- ===================================================================================== -->
+        <!-- MÀN HÌNH CHIẾN ĐẤU: HỆ THỐNG ĐÁNH MAP VƯỢT ẢI (CHƯƠNG 1-∞, MỖI CHƯƠNG 10 ẢI)              -->
+        <!-- Gồm 3 màn hình con chuyển đổi bằng switchCombatSub(): 'stageselect' / 'prep' / 'battle'   -->
+        <!-- Toàn bộ logic nằm trong <script> ở cuối trang, khu vực "HỆ THỐNG CHIẾN ĐẤU - VƯỢT ẢI".     -->
+        <!-- ===================================================================================== -->
+        <div id="view-combat" class="hidden flex-1 flex flex-col relative overflow-hidden text-white" style="background-image:linear-gradient(rgba(2,6,23,0.72), rgba(2,6,23,0.88)), url('Assets/img/chiendau.png'); background-size:cover; background-position:center;">
+
+            <!-- ============================ SUB-VIEW 1: ẢI HIỆN TẠI ============================ -->
+            <!-- Theo yêu cầu: không hiện lưới 10 ô, ải đã đánh xong không cần mở lại - chỉ hiện đang ở ải nào và nút Đánh Tiếp -->
+            <div id="combat-sub-stageselect" class="flex-1 flex flex-col items-center justify-center overflow-hidden p-6 text-center">
+                <p class="text-[11px] text-slate-300 font-bold tracking-widest mb-2">ẢI HIỆN TẠI</p>
+                <p id="txt-current-stage-label" class="text-4xl font-black text-yellow-400 drop-shadow-lg mb-1">1-1</p>
+                <p class="text-[11px] text-slate-400 mb-8">Vượt qua ải này để mở khóa ải tiếp theo</p>
+                <button onclick="continueLastStage()" class="w-full max-w-[240px] bg-gradient-to-r from-red-600 to-rose-700 py-4 rounded-2xl font-black text-base active:scale-95 transition shadow-lg">⚔️ Đánh Tiếp</button>
             </div>
-            <div class="h-10"></div>
+
+            <!-- ============================ SUB-VIEW 2: CHUẨN BỊ TRẬN ĐẤU ============================ -->
+            <div id="combat-sub-prep" class="hidden flex-1 flex flex-col overflow-hidden">
+                <div class="p-3 border-b border-slate-800 bg-slate-950/60 flex items-center justify-between shrink-0">
+                    <button onclick="switchCombatSub('stageselect')" class="text-[11px] font-bold bg-slate-800 border border-slate-700 px-3 py-1.5 rounded-lg">⬅ Chọn Ải</button>
+                    <p id="txt-prep-title" class="font-black text-sm text-yellow-400">Ải 1-1</p>
+                    <span></span>
+                </div>
+                <div class="flex-1 overflow-y-auto p-3 space-y-3">
+                    <div class="bg-slate-900/60 border border-red-900/40 rounded-xl p-3">
+                        <p class="text-[10px] text-slate-400 mb-2 font-bold">👹 ĐỘI HÌNH QUÁI VẬT · Hệ <span id="txt-prep-element" class="text-rose-400 font-black">KIM</span></p>
+                        <div id="prep-monster-grid" class="grid grid-cols-5 gap-1.5"></div>
+                    </div>
+                    <div class="bg-slate-900/60 border border-cyan-900/40 rounded-xl p-3">
+                        <div class="flex items-center justify-between mb-2">
+                            <p class="text-[10px] text-slate-400 font-bold">🛡️ ĐỘI HÌNH CỦA BẠN · BP: <span id="txt-prep-team-bp" class="text-orange-400 font-mono">0</span></p>
+                            <button onclick="openFormationEditor()" class="text-[9px] bg-cyan-900/50 border border-cyan-600 text-cyan-300 px-2 py-1 rounded font-bold">✥ Sắp Xếp Đội Hình</button>
+                        </div>
+                        <div id="prep-player-grid" class="grid grid-cols-5 gap-1.5"></div>
+                    </div>
+                </div>
+                <div class="p-3 border-t border-slate-800 bg-slate-950/60 shrink-0">
+                    <button onclick="startBattle()" class="w-full bg-gradient-to-r from-red-600 to-rose-700 py-3 rounded-xl font-black text-sm active:scale-95 transition shadow-lg">⚔️ Tấn Công</button>
+                </div>
+            </div>
+
+            <!-- ============================ SUB-VIEW 3: CHIẾN ĐẤU ============================ -->
+            <!-- Quái và tướng đứng đúng theo trận hình đã xếp (2 hàng trước - 3 hàng sau), hiển thị bằng ảnh splash. -->
+            <!-- Khi 1 đơn vị ra đòn: ảnh của nó nhấc lên rồi hạ về vị trí cũ; số sát thương nổi lên phía trên ảnh mục tiêu bị đánh trúng. -->
+            <div id="combat-sub-battle" class="hidden flex-1 flex flex-col overflow-hidden p-2">
+                <p class="text-center text-[9px] text-slate-500 font-bold mb-1">👹 ĐỘI HÌNH QUÁI VẬT</p>
+                <div id="battle-monster-back" class="grid grid-cols-3 gap-1.5 max-w-[240px] mx-auto w-full"></div>
+                <div id="battle-monster-front" class="grid grid-cols-2 gap-1.5 max-w-[160px] mx-auto w-full mt-1.5 mb-2"></div>
+                <div class="flex-1"></div>
+                <div id="battle-player-front" class="grid grid-cols-2 gap-1.5 max-w-[160px] mx-auto w-full mb-1.5"></div>
+                <div id="battle-player-back" class="grid grid-cols-3 gap-1.5 max-w-[240px] mx-auto w-full"></div>
+                <p class="text-center text-[9px] text-slate-500 font-bold mt-1 mb-2">🛡️ ĐỘI HÌNH CỦA BẠN</p>
+                <button onclick="skipBattlePlayback()" id="btn-battle-skip" class="w-full bg-slate-800 border border-slate-600 text-white text-xs font-bold py-2.5 rounded-xl active:scale-95 transition">⏩ Bỏ Qua</button>
+            </div>
+
+            <!-- BANNER TÊN KỸ NĂNG NỔI GIỮA MÀN HÌNH KHI 1 TƯỚNG/QUÁI SỬ DỤNG KỸ NĂNG (kynang/dacbiet, không hiện khi đánh thường) -->
+            <div id="skill-name-banner" class="hidden absolute inset-0 z-40 flex items-center justify-center pointer-events-none">
+                <span id="skill-name-banner-text" class="skill-banner-pop text-xl font-black text-amber-300 px-4 py-2 rounded-xl bg-slate-950/70 border-2 border-amber-400 tracking-wide text-center"></span>
+            </div>
+        </div>
+
+        <!-- POPUP SẮP XẾP ĐỘI HÌNH (KÉO THẢ THẺ TƯỚNG VÀO 5 Ô: 2 TRÊN - 3 DƯỚI) -->
+        <div id="formation-editor-popup" class="hidden fixed inset-0 bg-slate-950/97 z-[120] flex flex-col max-w-[430px] mx-auto left-0 right-0 h-full">
+            <div class="p-3 border-b border-slate-800 flex items-center justify-center shrink-0">
+                <span class="text-white font-bold text-sm">✥ Sắp Xếp Đội Hình</span>
+            </div>
+            <p class="text-[9px] text-slate-500 px-3 pt-2">Kéo thẻ tướng ở dưới thả vào ô trống. Hàng trên sẽ bị địch tấn công trước. Chạm ✖ để gỡ tướng khỏi ô.</p>
+            <div class="p-4 space-y-2 shrink-0">
+                <div class="grid grid-cols-2 gap-2 max-w-[160px] mx-auto" id="formation-row-top"></div>
+                <div class="grid grid-cols-3 gap-2 max-w-[240px] mx-auto" id="formation-row-bottom"></div>
+            </div>
+            <p class="text-[9px] text-slate-500 px-3 pt-1">🎒 Danh sách tướng đang có:</p>
+            <div id="formation-hero-pool" class="flex-1 overflow-y-auto p-3 grid grid-cols-4 gap-2 content-start"></div>
+            <div class="p-3 border-t border-slate-800 bg-slate-950/60 shrink-0">
+                <button onclick="closeFormationEditor()" class="w-full bg-gradient-to-r from-emerald-500 to-teal-600 text-slate-950 font-black text-sm py-3.5 rounded-xl active:scale-95 transition shadow-lg">✔️ Xong</button>
+            </div>
+        </div>
+
+        <!-- POPUP KẾT QUẢ VƯỢT ẢI (THẮNG / THUA) -->
+        <div id="stage-result-popup" class="hidden fixed inset-0 bg-slate-950/95 z-[130] flex flex-col items-center justify-center p-6 max-w-[430px] mx-auto left-0 right-0 h-full">
+            <div class="w-full bg-slate-900 border-2 rounded-2xl p-5 text-center" id="stage-result-card">
+                <p id="stage-result-title" class="text-xl font-black tracking-widest mb-1">🎉 CHIẾN THẮNG</p>
+                <p id="stage-result-sub" class="text-[10px] text-slate-400 mb-4">Ải 1-1</p>
+                <div id="stage-result-rewards" class="grid grid-cols-3 gap-2 mb-5"></div>
+                <div class="grid grid-cols-2 gap-3">
+                    <button id="btn-stage-result-continue" onclick="onStageResultContinue()" class="bg-gradient-to-r from-amber-500 to-orange-600 text-slate-950 font-black text-xs py-3 rounded-xl active:scale-95 transition">⚔️ Đánh Tiếp</button>
+                    <button onclick="onStageResultExit()" class="bg-slate-800 border border-slate-600 text-white font-bold text-xs py-3 rounded-xl active:scale-95 transition">✖ Thoát</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- POPUP RƯƠNG QUÀ OFFLINE THỜI GIAN THỰC -->
+        <div id="offline-reward-popup" class="hidden fixed inset-0 bg-slate-950/95 z-[140] flex flex-col items-center justify-center p-6 max-w-[430px] mx-auto left-0 right-0 h-full">
+            <div class="w-full bg-slate-900 border-2 border-amber-500 rounded-2xl p-5 text-center">
+                <p class="text-3xl mb-2">🎁</p>
+                <p class="text-base font-black text-amber-400 mb-1">RƯƠNG QUÀ OFFLINE</p>
+                <p id="offline-reward-duration" class="text-[10px] text-slate-400 mb-4">Bạn đã offline 0 phút</p>
+                <div id="offline-reward-list" class="grid grid-cols-3 gap-2 mb-5"></div>
+                <button onclick="claimOfflineReward()" class="w-full bg-gradient-to-r from-amber-500 to-orange-600 text-slate-950 font-black text-xs py-3 rounded-xl active:scale-95 transition">Nhận Quà</button>
+            </div>
         </div>
 
         <!-- MÀN HÌNH TÚI ĐỒ -->
@@ -144,10 +281,27 @@
         </div>
 
         <!-- MÀN HÌNH CHI TIẾT ANH HÙNG (CẤU TRÚC 66% - 27%) -->
-        <div id="view-hero-detail" class="hidden absolute inset-0 bg-slate-950 z-40 flex flex-col justify-between pt-6 md:pt-2">
-            
-            <div id="hero-graphic-zone" class="h-[66%] relative bg-slate-900/40 flex flex-col justify-between p-2">
-                <div class="flex justify-between items-center z-10 w-full px-1">
+        <div id="view-hero-detail" class="hidden absolute inset-0 bg-slate-950 z-40 flex flex-col justify-between pt-6 md:pt-2 overflow-hidden">
+
+            <!-- ============================================================================= -->
+            <!-- ẢNH NHÂN VẬT DẠNG LỚP NỀN: PHỦ TOÀN BỘ MÀN HÌNH CHI TIẾT ANH HÙNG                -->
+            <!-- object-cover + object-top = ảnh được CĂN GIỮA THEO CHIỀU NGANG, CĂN TRÊN THEO   -->
+            <!-- CHIỀU DỌC để luôn lộ trọn phần trên của ảnh (mặt/thân trên nhân vật).            -->
+            <!-- CHẠM VÀO NỬA TRÊN ẢNH -> phóng to xem toàn màn hình (xem #fullscreen-hero-overlay)-->
+            <!-- CHẠM LẦN NỮA VÀO ẢNH ĐANG PHÓNG TO -> tự ẩn về lại như cũ (đã xử lý sẵn ở          -->
+            <!-- closeFullscreenHeroImage, gắn onclick ngay trên overlay toàn màn hình).           -->
+            <!-- ============================================================================= -->
+            <div class="absolute inset-0 z-0 overflow-hidden">
+                <img id="det-splash" src="" onerror="this.src='https://via.placeholder.com/300x450?text=Hero+Splash'"
+                    class="w-full h-full object-cover object-top cursor-zoom-in"
+                    onclick="handleHeroImageTap(event)">
+            </div>
+
+            <!-- LỚP PHỦ GRADIENT NHẸ Ở TRÊN CÙNG GIÚP NÚT "⬅ Anh Hùng" VÀ TAG LUÔN DỄ ĐỌC -->
+            <div class="absolute inset-0 z-[1] pointer-events-none bg-gradient-to-b from-black/50 via-black/5 to-transparent h-24"></div>
+
+            <div id="hero-graphic-zone" class="h-[66%] relative flex flex-col justify-between p-2 z-10 pointer-events-none">
+                <div class="flex justify-between items-center z-10 w-full px-1 pointer-events-auto">
                     <button onclick="exitHeroDetail()" class="text-white font-bold text-xs bg-black/60 px-3 py-1.5 rounded-xl border border-slate-700">⬅ Anh Hùng</button>
                     <div class="flex space-x-1">
                         <span id="det-element" class="bg-blue-600 text-white text-[9px] px-2 py-0.5 rounded-full font-bold shadow">THỦY</span>
@@ -156,15 +310,11 @@
                 </div>
 
                 <div class="flex-1 flex items-center justify-between px-1 w-full relative">
-                    <div id="equip-left" class="hidden flex flex-col space-y-2 z-20 w-12"></div>
-                    <div class="absolute inset-0 flex items-center justify-center pointer-events-none z-0 overflow-hidden">
-                        <img id="det-splash" src="" onerror="this.src='https://via.placeholder.com/300x450?text=Hero+Splash'" class="h-[105%] w-full object-cover filter drop-shadow-[0_15px_15px_rgba(234,179,8,0.2)]">
-                    </div>
-                    <button onclick="openFullscreenHeroImage()" class="absolute bottom-16 right-4 z-30 bg-black/70 hover:bg-black/90 text-white p-2.5 rounded-full border border-slate-700 shadow-xl active:scale-95 transition text-sm">🔍</button>
-                    <div id="equip-right" class="hidden flex flex-col space-y-2 z-20 w-12 items-end"></div>
+                    <div id="equip-left" class="hidden flex flex-col space-y-2 z-20 w-12 pointer-events-auto"></div>
+                    <div id="equip-right" class="hidden flex flex-col space-y-2 z-20 w-12 items-end pointer-events-auto"></div>
                 </div>
 
-                <div class="bg-gradient-to-t from-slate-950 via-slate-950/80 to-transparent p-2 pt-8 z-10 flex justify-between items-end absolute bottom-0 inset-x-0">
+                <div class="bg-gradient-to-t from-slate-950 via-slate-950/80 to-transparent p-2 pt-8 z-10 flex justify-between items-end absolute bottom-0 inset-x-0 pointer-events-auto">
                     <div>
                         <div class="flex items-center space-x-2">
                             <h2 id="det-name" class="text-white font-black text-sm font-mono">---</h2>
@@ -181,7 +331,7 @@
             </div>
 
             <!-- TABS ĐIỀU HƯỚNG TÍNH NĂNG CHỈ SỐ / TRANG BỊ -->
-            <div class="bg-slate-950 border-y border-slate-800 flex text-center text-[10px] font-bold text-slate-400 z-10">
+            <div class="relative bg-slate-950/40 backdrop-blur-md border-y border-slate-800/60 flex text-center text-[10px] font-bold text-slate-400 z-10">
                 <button onclick="switchDetailTab('chiso')" id="tab-det-chiso" class="flex-1 py-2.5 text-yellow-400 border-b-2 border-yellow-400">Thông tin</button>
                 <button onclick="switchDetailTab('trangbi')" id="tab-det-trangbi" class="flex-1 py-2.5">Trang bị</button>
                 <button onclick="switchDetailTab('kynang')" id="tab-det-kynang" class="flex-1 py-2.5">Skill</button>
@@ -190,7 +340,7 @@
             </div>
 
             <!-- PANEL THÔNG TIN 27% KHÔNG GIAN -->
-            <div class="h-[27%] p-2.5 overflow-y-auto text-white text-xs bg-slate-950 z-10 flex flex-col justify-between">
+            <div class="relative h-[27%] p-2.5 overflow-y-auto text-white text-xs bg-slate-950/40 backdrop-blur-md z-10 flex flex-col justify-between">
                 <div id="panel-det-chiso" class="h-full flex flex-col justify-between space-y-1.5">
                     <div class="grid grid-cols-2 gap-1.5 bg-slate-900/60 p-2 rounded-xl border border-slate-800/80">
                         <div><p class="text-slate-400 text-[10px]">⚔️ Tấn Công: <span id="stat-det-atk" class="text-red-400 font-bold font-mono">0</span></p></div>
@@ -209,21 +359,69 @@
                     <div id="filtered-equips-list" class="flex-1 overflow-x-auto flex space-x-2 pb-1 items-center"></div>
                 </div>
 
-                <div id="panel-det-kynang" class="hidden h-full space-y-1">
-                    <div id="skills-list-container" class="space-y-1">
-                        <div class="bg-slate-900 p-2 rounded-lg border border-slate-800 flex justify-between"><span class="text-purple-300 font-bold">🎯 Thiên Phú Thỏ</span><span class="font-mono text-yellow-400">Lv.Max</span></div>
+                <!-- ===================================================================== -->
+                <!-- TAB KỸ NĂNG: mỗi tướng có đúng 4 kỹ năng cố định:                        -->
+                <!--   Đánh Thường / Kỹ Năng / Kỹ Năng Đặc Biệt / Kỹ Năng Bị Động             -->
+                <!-- Cấp kỹ năng tối đa = Cấp độ hiện tại của tướng (hero.level).             -->
+                <!-- Muốn nâng thêm cấp kỹ năng thì phải tăng cấp tướng ở tab "Thông tin".    -->
+                <!-- Dữ liệu tên/mô tả kỹ năng: xem biến SKILL_DB / DEFAULT_SKILL_TEMPLATE.   -->
+                <!-- ===================================================================== -->
+                <div id="panel-det-kynang" class="hidden h-full overflow-y-auto space-y-1.5">
+                    <div id="skills-list-container" class="space-y-1.5"></div>
+                </div>
+
+                <!-- ===================================================================== -->
+                <!-- TAB RÀNG BUỘC (DUYÊN PHẬN): nếu 2 tướng trong 1 cặp ràng buộc CÙNG ĐƯỢC SỞ HỮU -->
+                <!-- thì cả 2 sẽ được cộng thêm % chỉ số (xem hàm calculateFinalStats).       -->
+                <!-- GHI CHÚ: Game hiện chưa có màn hình chọn đội hình ra trận riêng, nên      -->
+                <!-- "cùng ra trận" được tính đơn giản là "cùng có trong danh sách Anh Hùng".  -->
+                <!-- CHỈNH SỬA / THÊM CẶP RÀNG BUỘC TẠI biến BOND_DB ở phần <script>.           -->
+                <!-- ===================================================================== -->
+                <div id="panel-det-rangbuoc" class="hidden h-full overflow-y-auto space-y-1.5">
+                    <div id="bond-list-container" class="space-y-1.5"></div>
+                </div>
+
+                <!-- ===================================================================== -->
+                <!-- TAB YÊU THÍCH: tăng cấp Thân Mật bằng cách tặng 🍬 Kẹo / ❤️ Trái Tim.    -->
+                <!-- Kẹo & Trái Tim thu thập được ở màn "Chiến Đấu" > nút "Đánh Quái".        -->
+                <!-- Mỗi lần tăng 1 cấp Thân Mật sẽ MỞ THÊM 1 ẢNH MỚI của tướng               -->
+                <!-- (đường dẫn dạng Assets/img/heroes/<tên_tướng>/splash.png, splash1.png,   -->
+                <!-- splash2.png, splash3.png...). Người chơi chạm vào ảnh trong bộ sưu tập   -->
+                <!-- để CHỌN LÀM ẢNH CHÍNH (ảnh này sẽ hiện ở màn chi tiết tướng & khi Đánh Quái). -->
+                <!-- CHỈNH CẤP TỐI ĐA / SỐ ĐIỂM CẦN TẠI biến FAVOR_MAX_LEVEL / favorPointsNeeded(). -->
+                <!-- ===================================================================== -->
+                <div id="panel-det-yeuthich" class="hidden h-full overflow-y-auto space-y-2">
+                    <div class="bg-slate-900/60 border border-pink-900/40 rounded-xl p-2">
+                        <div class="flex justify-between items-center mb-1">
+                            <span class="text-pink-400 font-bold text-[11px]">💖 Thân mật: Lv.<span id="txt-fav-lvl-text">1</span>/<span id="txt-fav-lvl-max">5</span></span>
+                            <span class="text-[9px] text-slate-400 font-mono"><span id="txt-fav-points">0</span>/<span id="txt-fav-points-needed">30</span> điểm</span>
+                        </div>
+                        <div class="w-full h-2 bg-slate-800 rounded-full overflow-hidden">
+                            <div id="bar-fav-progress" class="h-full bg-pink-500 transition-all" style="width:0%"></div>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-2">
+                        <button onclick="giftFavorItem('candy')" class="bg-slate-900 border border-pink-800/40 rounded-lg py-1.5 text-[10px] font-bold text-pink-300 active:scale-95 transition">🍬 Tặng Kẹo (<span id="txt-candy-count">0</span>)</button>
+                        <button onclick="giftFavorItem('heart')" class="bg-slate-900 border border-rose-800/40 rounded-lg py-1.5 text-[10px] font-bold text-rose-300 active:scale-95 transition">❤️ Tặng Trái Tim (<span id="txt-heart-count">0</span>)</button>
+                    </div>
+
+                    <div>
+                        <p class="text-[9px] text-slate-400 mb-1">🖼️ Bộ sưu tập ảnh (chạm để đặt làm ảnh chính):</p>
+                        <div id="fav-gallery-list" class="grid grid-cols-4 gap-1.5"></div>
                     </div>
                 </div>
-                <div id="panel-det-rangbuoc" class="hidden h-full space-y-1"><div class="text-slate-500 text-center italic py-4">Chưa kích hoạt duyên phận</div></div>
-                <div id="panel-det-yeuthich" class="hidden h-full"><div class="bg-slate-900 p-2 rounded-xl border border-slate-800 text-center text-pink-400 font-bold">💖 Thân mật: Lv.<span id="txt-fav-lvl-text">1</span></div></div>
             </div>
         </div>
 
-        <!-- THANH CHUYỂN ĐỔI MÀN HÌNH CHÍNH BOTTOM -->
+        <!-- ================================================================================= -->
+        <!-- THANH CHUYỂN ĐỔI MÀN HÌNH CHÍNH BOTTOM (NAV BAR)                                    -->
+        <!-- Tính năng Triệu Hồi (view-gacha) giờ được mở qua nút vô hình "Đài Chiêu Mộ" đè lên     -->
+        <!-- ảnh nền ở màn hình Sảnh Chính (xem trong khối #view-lobby phía trên).                 -->
+        <!-- ================================================================================= -->
         <div class="w-full bg-slate-950 p-2 flex justify-around items-center text-white text-[10px] border-t border-slate-800 pb-5 md:pb-2 z-20">
             <button onclick="switchScreen('lobby')" id="nav-lobby" class="flex flex-col items-center text-slate-500 transition"><span class="text-base">🏠</span><span>Sảnh</span></button>
             <button onclick="switchScreen('heroes')" id="nav-heroes" class="flex flex-col items-center text-slate-500 transition"><span class="text-base">🎒</span><span>Anh Hùng</span></button>
-            <button onclick="switchScreen('gacha')" id="nav-gacha" class="flex flex-col items-center text-yellow-400 font-bold transition"><span class="text-base">🌌</span><span>Triệu Hồi</span></button>
             <button onclick="switchScreen('combat')" id="nav-combat" class="flex flex-col items-center text-slate-500 transition"><span class="text-base">⚔️</span><span>Chiến Đấu</span></button>
             <button onclick="switchScreen('bag')" id="nav-bag" class="flex flex-col items-center text-slate-500 transition"><span class="text-base">💼</span><span>Túi Đồ</span></button>
         </div>
@@ -283,14 +481,177 @@
         if (window.visualViewport) window.visualViewport.addEventListener('resize', setAppHeight);
 
         // CƠ SỞ DỮ LIỆU GAME PHỤC VỤ QUAY GACHA VÀ PHẦN THƯỞNG BANNER
+        // critDame = % SÁT THƯƠNG CHÍ MẠNG: khi ra đòn chí mạng, sát thương nhân thêm (critDame/100) lần. VD 150 nghĩa là x1.5 sát thương.
+        // hitRate  = % ĐÁNH TRÚNG: xác suất đòn đánh/kỹ năng trúng mục tiêu, nếu trượt thì không gây sát thương ("Trượt!").
+        // Nếu 1 tướng không khai báo critDame/hitRate riêng thì dùng DEFAULT_CRIT_DAME / DEFAULT_HIT_RATE ở dưới.
+        const DEFAULT_CRIT_DAME = 150; // mặc định +50% sát thương khi chí mạng
+        const DEFAULT_HIT_RATE = 90;   // mặc định 90% cơ hội đánh trúng
         const HERO_DB = {
-            "Thỏ Ngọc": { rarity: "SSR", element: "KIM", job: "CHIẾN SĨ", atk: 120, hp: 1000, def: 60, spd: 115, avatar: "Assets/img/heroes/thongoc/avatar.png", splash: "Assets/img/heroes/thongoc/splash.png" },
-            "Thetis": { rarity: "SSR", element: "THỦY", job: "PHÁP SƯ", atk: 150, hp: 850, def: 45, spd: 110, avatar: "Assets/img/heroes/thetis/avatar.png", splash: "Assets/img/heroes/thetis/splash.png" },
-            "Arthur": { rarity: "SR", element: "HỎA", job: "KIẾM SĨ", atk: 140, hp: 1100, def: 70, spd: 105, avatar: "", splash: "" },
-            "Merlin": { rarity: "SR", element: "PHONG", job: "PHÁP SƯ", atk: 110, hp: 750, def: 40, spd: 112, avatar: "", splash: "" },
-            "Goku": { rarity: "SR", element: "LÔI", job: "ĐẤU SĨ", atk: 170, hp: 950, def: 50, spd: 120, avatar: "", splash: "" },
-            "Luffy": { rarity: "R", element: "THỦY", job: "DỰ BI", atk: 85, hp: 600, def: 35, spd: 98, avatar: "", splash: "" }
+            "Thỏ Ngọc": { rarity: "SSR", element: "KIM", job: "CHIẾN SĨ", atk: 120, hp: 1000, def: 60, spd: 115, critDame: 150, hitRate: 92, avatar: "Assets/img/heroes/thongoc/avatar.png", splash: "Assets/img/heroes/thongoc/splash.png" },
+            "Thetis": { rarity: "SSR", element: "THỦY", job: "PHÁP SƯ", atk: 150, hp: 850, def: 45, spd: 110, critDame: 145, hitRate: 90, avatar: "Assets/img/heroes/thetis/avatar.png", splash: "Assets/img/heroes/thetis/splash.png" },
+            "Arthur": { rarity: "SR", element: "HỎA", job: "KIẾM SĨ", atk: 140, hp: 1100, def: 70, spd: 105, critDame: 150, hitRate: 90, avatar: "", splash: "" },
+            "Merlin": { rarity: "SR", element: "PHONG", job: "PHÁP SƯ", atk: 110, hp: 750, def: 40, spd: 112, critDame: 140, hitRate: 93, avatar: "Assets/img/heroes/merlin/avatar.png", splash: "Assets/img/heroes/merlin/splash.png" },
+            "Goku": { rarity: "SR", element: "LÔI", job: "ĐẤU SĨ", atk: 170, hp: 950, def: 50, spd: 120, critDame: 160, hitRate: 88, avatar: "Assets/img/heroes/goku/avatar.png", splash: "Assets/img/heroes/goku/splash.png" },
+            "Luffy": { rarity: "R", element: "THỦY", job: "DỰ BI", atk: 5, hp: 200, def: 5, spd: 98, critDame: 135, hitRate: 88, avatar: "Assets/img/heroes/luffy/avatar.png", splash: "Assets/img/heroes/luffy/splash.png" }
         };
+
+        // ================================================================================= //
+        // CƠ SỞ DỮ LIỆU KỸ NĂNG (SKILL_DB)                                                     //
+        // Mỗi tướng có đúng 4 loại kỹ năng cố định (khoá "thuong/kynang/dacbiet/bidong"):        //
+        //   - thuong  = Đánh Thường (chiêu cơ bản, luôn dùng được)                              //
+        //   - kynang  = Kỹ Năng (chiêu chủ động thường dùng trong trận)                          //
+        //   - dacbiet = Kỹ Năng Đặc Biệt (chiêu mạnh nhất / cần tích năng lượng)                  //
+        //   - bidong  = Kỹ Năng Bị Động (hiệu ứng luôn tồn tại, không cần bấm)                    //
+        // THÊM TƯỚNG MỚI: chỉ cần thêm 1 khoá tên tướng mới với đủ 4 mục thuong/kynang/dacbiet/bidong. //
+        // NẾU KHÔNG KHAI BÁO RIÊNG, TƯỚNG SẼ DÙNG DEFAULT_SKILL_TEMPLATE PHÍA DƯỚI.               //
+        // ================================================================================= //
+        const SKILL_DB = {
+            "Thỏ Ngọc": {
+                thuong:  { name: "Húc Ngọc",           icon: "👊", desc: "Đánh thường gây sát thương hệ Kim lên 1 kẻ địch." },
+                kynang:  { name: "Xoáy Băng Ngọc",       icon: "🌀", desc: "Gây sát thương diện rộng và làm chậm tốc độ địch." },
+                dacbiet: { name: "Thịnh Nộ Bạch Thố",     icon: "💥", desc: "Kỹ năng đặc biệt: sát thương cực lớn lên toàn bộ kẻ địch." },
+                bidong:  { name: "Thiên Phú Thỏ",         icon: "🎯", desc: "Bị động: tự động tăng % Tấn Công cho toàn team khi ra trận." }
+            },
+            "Thetis": {
+                thuong:  { name: "Trượng Thủy Triều",     icon: "👊", desc: "Đánh thường gây sát thương hệ Thủy lên 1 kẻ địch." },
+                kynang:  { name: "Sóng Ngầm Băng Giá",     icon: "🌊", desc: "Tạo một cột nước đóng băng, gây sát thương và giảm né." },
+                dacbiet: { name: "Đại Hồng Thủy",         icon: "💥", desc: "Kỹ năng đặc biệt: nhấn chìm toàn bộ kẻ địch, sát thương cực lớn." },
+                bidong:  { name: "Máu Của Biển Cả",       icon: "🎯", desc: "Bị động: hồi phục % HP mỗi khi kết thúc lượt." }
+            },
+            "Arthur": {
+                thuong:  { name: "Chém Vương Kiếm",       icon: "👊", desc: "Đánh thường gây sát thương hệ Hỏa lên 1 kẻ địch." },
+                kynang:  { name: "Lưỡi Kiếm Rực Lửa",       icon: "🔥", desc: "Tung một đường kiếm khí gây sát thương lan sang địch gần." },
+                dacbiet: { name: "Excalibur Giáng Thế",    icon: "💥", desc: "Kỹ năng đặc biệt: giáng một đòn chí mạng sát thương cực lớn." },
+                bidong:  { name: "Ý Chí Quân Vương",       icon: "🎯", desc: "Bị động: tăng % Phòng Thủ khi HP xuống dưới 50%." }
+            },
+            "Merlin": {
+                thuong:  { name: "Trượng Phong Ma",       icon: "👊", desc: "Đánh thường gây sát thương hệ Phong lên 1 kẻ địch." },
+                kynang:  { name: "Cuồng Phong Hỗn Loạn",   icon: "🌪️", desc: "Tạo lốc xoáy gây sát thương và có tỉ lệ làm choáng địch." },
+                dacbiet: { name: "Đại Pháp Thuật Cổ Xưa",  icon: "💥", desc: "Kỹ năng đặc biệt: triệu hồi phép thuật cổ, sát thương toàn màn." },
+                bidong:  { name: "Trí Tuệ Vô Song",        icon: "🎯", desc: "Bị động: tăng % Tấn Công theo % Tốc Độ hiện có." }
+            },
+            "Goku": {
+                thuong:  { name: "Đấm Lôi Chấn",          icon: "👊", desc: "Đánh thường gây sát thương hệ Lôi lên 1 kẻ địch." },
+                kynang:  { name: "Kamehameha",            icon: "⚡", desc: "Phóng ra luồng năng lượng gây sát thương lớn theo đường thẳng." },
+                dacbiet: { name: "Bản Năng Vô Cực",       icon: "💥", desc: "Kỹ năng đặc biệt: tăng mạnh mọi chỉ số trong vài lượt." },
+                bidong:  { name: "Tinh Thần Chiến Đấu",   icon: "🎯", desc: "Bị động: tăng % Tốc Độ khi bị đánh trúng." }
+            },
+            "Luffy": {
+                thuong:  { name: "Đấm Cao Su",            icon: "👊", desc: "Đánh thường gây sát thương hệ Thủy lên 1 kẻ địch." },
+                kynang:  { name: "Súng Gatling",          icon: "🥊", desc: "Tung liên tiếp nhiều cú đấm gây sát thương dồn dập." },
+                dacbiet: { name: "Thức Tỉnh Trái Ác Quỷ",  icon: "💥", desc: "Kỹ năng đặc biệt: biến hình tăng mạnh sát thương gây ra." },
+                bidong:  { name: "Cơ Thể Cao Su",         icon: "🎯", desc: "Bị động: giảm % sát thương vật lý phải nhận." }
+            }
+        };
+        // MẪU KỸ NĂNG DÙNG CHUNG CHO TƯỚNG CHƯA ĐƯỢC KHAI BÁO RIÊNG TRONG SKILL_DB
+        const DEFAULT_SKILL_TEMPLATE = {
+            thuong:  { name: "Đánh Thường",        icon: "👊", desc: "Gây sát thương vật lý cơ bản lên 1 kẻ địch." },
+            kynang:  { name: "Kỹ Năng",            icon: "✨", desc: "Chiêu thức chủ động gây sát thương hoặc hiệu ứng lên kẻ địch." },
+            dacbiet: { name: "Kỹ Năng Đặc Biệt",   icon: "💥", desc: "Chiêu thức mạnh nhất, cần tích lũy năng lượng để kích hoạt." },
+            bidong:  { name: "Kỹ Năng Bị Động",    icon: "🎯", desc: "Hiệu ứng bị động luôn tồn tại khi tướng ra trận." }
+        };
+        // THỨ TỰ & NHÃN HIỂN THỊ CỦA 4 LOẠI KỸ NĂNG TRÊN GIAO DIỆN
+        const SKILL_TYPES = [
+            { key: "thuong",  label: "Đánh Thường" },
+            { key: "kynang",  label: "Kỹ Năng" },
+            { key: "dacbiet", label: "Kỹ Năng Đặc Biệt" },
+            { key: "bidong",  label: "Kỹ Năng Bị Động" }
+        ];
+        function getHeroSkillTemplate(heroName) { return SKILL_DB[heroName] || DEFAULT_SKILL_TEMPLATE; }
+
+        // ================================================================================= //
+        // HERO_COMBAT_SKILLS: DỮ LIỆU CHỨC NĂNG THỰC SỰ DÙNG TRONG MÔ PHỎNG CHIẾN ĐẤU          //
+        // (khác với SKILL_DB ở trên chỉ là tên/icon/mô tả để hiển thị UI)                       //
+        // Mỗi mục gồm:                                                                          //
+        //   thuong / kynang / dacbiet: { multiplier: hệ số % Tấn Công dùng làm sát thương,        //
+        //        targeting: 'default' (mục tiêu ưu tiên theo trận hình, hàng trên trước) |        //
+        //                   'lowestHp' (mục tiêu địch đang thấp máu nhất) |                       //
+        //                   'all' (toàn bộ địch còn sống, lan diện rộng) |                        //
+        //                   'pierce2' (xuyên thẳng trúng 2 mục tiêu liên tiếp theo trận hình) }    //
+        //   passiveOnBattleStart(unit, allyUnits): hiệu ứng bị động áp dụng 1 LẦN DUY NHẤT lúc    //
+        //        vừa vào trận (ví dụ buff chỉ số toàn team ngay khi ra trận).                      //
+        //   onDamagedTaken(unit): hiệu ứng bị động kích hoạt MỖI KHI đơn vị này bị đánh trúng.      //
+        //   onOwnTurnEnd(unit): hiệu ứng bị động kích hoạt sau MỖI LƯỢT đơn vị này vừa ra đòn.       //
+        // MUỐN THÊM TƯỚNG MỚI: copy 1 khối bên dưới, đổi multiplier/targeting/hiệu ứng theo ý muốn.  //
+        // TƯỚNG CHƯA KHAI BÁO Ở ĐÂY SẼ DÙNG DEFAULT_HERO_COMBAT_SKILL (áp dụng cho Arthur/Merlin/Luffy). //
+        // ================================================================================= //
+        const HERO_COMBAT_SKILLS = {
+            // ---- THỎ NGỌC (VÍ DỤ MẪU THEO ĐÚNG YÊU CẦU) ----
+            "Thỏ Ngọc": {
+                thuong:  { multiplier: 1.0, targeting: 'default' },   // Húc Ngọc: 100% Tấn Công lên 1 mục tiêu theo trận hình
+                kynang:  { multiplier: 2.5, targeting: 'lowestHp' },  // Xoáy Băng Ngọc: 250% sát thương lên mục tiêu thấp máu nhất
+                dacbiet: { multiplier: 2.0, targeting: 'all' },       // Thịnh Nộ Bạch Thố: 200% sát thương lên TẤT CẢ tướng địch
+                // Bị động Thiên Phú Thỏ: ngay khi ra trận, tăng 5% Tấn Công cho TOÀN ĐỘI (chỉ áp dụng nếu Thỏ Ngọc thuộc phe đó)
+                passiveOnBattleStart(unit, allyUnits) {
+                    allyUnits.forEach(u => { u.atk = Math.round(u.atk * 1.05); });
+                }
+            },
+            // ---- GOKU (VÍ DỤ MẪU) ----
+            "Goku": {
+                thuong:  { multiplier: 1.0, targeting: 'default' },   // Đấm Lôi Chấn: 100% Tấn Công lên 1 mục tiêu theo trận hình
+                kynang:  { multiplier: 2.2, targeting: 'pierce2' },   // Kamehameha: 220% sát thương, xuyên thẳng trúng 2 mục tiêu liên tiếp
+                // Bản Năng Vô Cực: tự buff mạnh ATK/DEF/SPD của Goku (+30%, duy trì hết trận) rồi đánh 150% Tấn Công vào mục tiêu
+                dacbiet: { multiplier: 1.5, targeting: 'default', selfBuff: { atk: 0.3, def: 0.3, spd: 0.3 } },
+                // Bị động Tinh Thần Chiến Đấu: mỗi lần Goku bị đánh trúng, Tốc Độ tăng thêm 5% (cộng dồn)
+                onDamagedTaken(unit) { unit.spd = Math.round(unit.spd * 1.05); }
+            },
+            // ---- THETIS (VÍ DỤ MẪU) ----
+            "Thetis": {
+                thuong:  { multiplier: 1.0, targeting: 'default' },   // Trượng Thủy Triều: 100% Tấn Công lên 1 mục tiêu theo trận hình
+                // Sóng Ngầm Băng Giá: 180% sát thương lên mục tiêu thấp máu nhất, đồng thời giảm 15% Phòng Thủ mục tiêu đó (giảm né tránh)
+                kynang:  { multiplier: 1.8, targeting: 'lowestHp', defDownTarget: 0.15 },
+                dacbiet: { multiplier: 2.2, targeting: 'all' },       // Đại Hồng Thủy: 220% sát thương lên TẤT CẢ tướng địch
+                // Bị động Máu Của Biển Cả: sau MỖI LƯỢT của Thetis, hồi 8% HP tối đa cho chính mình
+                onOwnTurnEnd(unit) { unit.curHp = Math.min(unit.maxHp, unit.curHp + Math.round(unit.maxHp * 0.08)); }
+            }
+        };
+        // MẪU CHIẾN ĐẤU MẶC ĐỊNH CHO TƯỚNG CHƯA ĐƯỢC KHAI BÁO RIÊNG TRONG HERO_COMBAT_SKILLS
+        // (VD: Arthur, Merlin, Luffy) - chỉ có sát thương cơ bản theo tỉ lệ %, không có hiệu ứng đặc biệt.
+        const DEFAULT_HERO_COMBAT_SKILL = {
+            thuong:  { multiplier: 1.0, targeting: 'default' },
+            kynang:  { multiplier: 1.5, targeting: 'lowestHp' },
+            dacbiet: { multiplier: 1.8, targeting: 'all' }
+        };
+        function getHeroCombatSkill(heroName) { return HERO_COMBAT_SKILLS[heroName] || DEFAULT_HERO_COMBAT_SKILL; }
+
+        // ================================================================================= //
+        // CƠ SỞ DỮ LIỆU RÀNG BUỘC / DUYÊN PHẬN (BOND_DB)                                       //
+        // Nếu người chơi SỞ HỮU CẢ 2 TƯỚNG trong 1 cặp thì cả 2 được cộng thêm % chỉ số (bonus). //
+        // bonus tính theo % (0.1 = +10%) áp dụng lên atk/hp/def/spd sau khi tính trang bị.       //
+        // THÊM CẶP RÀNG BUỘC MỚI: copy 1 dòng bên dưới và đổi heroA/heroB/name/desc/bonus.        //
+        // ================================================================================= //
+        const BOND_DB = [
+            { heroA: "Thỏ Ngọc", heroB: "Thetis", name: "Băng Ngọc Tương Hòa", desc: "Thỏ Ngọc và Thetis vốn là đôi bạn tri kỷ, cùng ra trận sẽ hợp lực tăng sức mạnh.", bonus: { atk: 0.08, hp: 0.08, def: 0.05, spd: 0.05 } },
+            { heroA: "Arthur", heroB: "Merlin", name: "Vua & Đại Pháp Sư", desc: "Arthur và Merlin là cặp bài trùng huyền thoại, hỗ trợ nhau cả công lẫn thủ.", bonus: { atk: 0.1, def: 0.1 } },
+            { heroA: "Goku", heroB: "Luffy", name: "Chiến Hữu Nhiệt Huyết", desc: "Hai chiến binh máu lửa khi đứng cùng chiến tuyến sẽ càng thêm mạnh mẽ.", bonus: { atk: 0.12, spd: 0.08 } }
+        ];
+        // TRẢ VỀ TẤT CẢ CẶP RÀNG BUỘC LIÊN QUAN TỚI 1 TƯỚNG
+        function getHeroBonds(heroName) { return BOND_DB.filter(b => b.heroA === heroName || b.heroB === heroName); }
+        // TRẢ VỀ TÊN TƯỚNG "ĐỐI TÁC" TRONG 1 CẶP RÀNG BUỘC
+        function getBondPartnerName(bond, heroName) { return bond.heroA === heroName ? bond.heroB : bond.heroA; }
+        // KIỂM TRA XEM 1 TƯỚNG (THEO TÊN) CÓ ĐANG ĐƯỢC SỞ HỮU KHÔNG
+        function isHeroOwned(heroName) { return myHeroes.some(h => h.name === heroName); }
+
+        // ================================================================================= //
+        // HỆ THỐNG YÊU THÍCH / THÂN MẬT (FAVORABILITY) & BỘ SƯU TẬP ẢNH                         //
+        // Cấp Thân Mật tối đa: FAVOR_MAX_LEVEL. Mỗi lần lên 1 cấp sẽ mở thêm 1 ảnh splash mới.     //
+        // Ảnh gốc (Lv.1, index 0)  = Assets/img/heroes/<slug>/splash.png                          //
+        // Ảnh mở thêm (index i>0)  = Assets/img/heroes/<slug>/splash{i}.png (splash1, splash2,...) //
+        // CHỈNH SỐ CẤP TỐI ĐA / ĐIỂM CẦN THIẾT TẠI ĐÂY:                                            //
+        // ================================================================================= //
+        const FAVOR_MAX_LEVEL = 5;         // Tổng số ảnh tối đa mở được = FAVOR_MAX_LEVEL (bao gồm ảnh gốc)
+        const CANDY_FAVOR_POINTS = 2;       // Mỗi 1 Kẹo tặng cộng bao nhiêu điểm Thân Mật
+        const HEART_FAVOR_POINTS = 10;      // Mỗi 1 Trái Tim tặng cộng bao nhiêu điểm Thân Mật
+        // SỐ ĐIỂM THÂN MẬT CẦN ĐỂ LÊN CẤP TIẾP THEO (TỪ "level" LÊN "level+1")
+        function favorPointsNeeded(level) { return level * 30; }
+
+        // GHÉP ĐƯỜNG DẪN ẢNH CHÍNH CỦA TƯỚNG THEO INDEX ĐÃ MỞ (0 = ảnh gốc splash.png)
+        function getHeroSplashPath(heroName, index) {
+            const db = HERO_DB[heroName];
+            if (!db || !db.splash) return "";
+            if (!index) return db.splash;
+            return db.splash.replace(/splash\.png$/i, `splash${index}.png`);
+        }
 
         const LEFT_SLOTS = [{ id: "mu", name: "Mũ 🪖" }, { id: "ao", name: "Áo 🧥" }, { id: "quan", name: "Quần 👖" }, { id: "giay", name: "Giày 🥾" }];
         const RIGHT_SLOTS = [{ id: "vukhi", name: "Vũ Khí 🗡️" }, { id: "trangsuc", name: "Trang Sức 📿" }, { id: "bua", name: "Bùa Hộ Mệnh 🧿" }];
@@ -330,26 +691,89 @@
             return fallbackPool[Math.floor(Math.random() * fallbackPool.length)];
         }
 
+        // TRẢ VỀ CLASS MÀU VIỀN THEO ĐỘ HIẾM: SSR VÀNG / SR TÍM / R TRẮNG
+        function getRarityBorderClass(rarity) {
+            if (rarity === "SSR") return "border-yellow-400";
+            if (rarity === "SR") return "border-purple-500";
+            return "border-white";
+        }
+
+        // THÊM MỚI HOẶC NÂNG SAO CHO TƯỚNG (DÙNG CHUNG CHO GACHA VÀ ĐỔI TƯỚNG BẰNG HUY CHƯƠNG)
+        // Lần đầu ra: 1 sao vàng. Trùng lặp: tăng dần lên 5 sao vàng, rồi chuyển sang 1-5 sao đỏ.
+        // Khi đã đủ 5 sao đỏ (MAX), trùng lặp tiếp theo quy đổi thành 10 Huy Chương.
+        // ĐẢM BẢO 1 OBJECT TƯỚNG LUÔN CÓ ĐỦ CÁC TRƯỜNG DỮ LIỆU MỚI (skills 4 loại, favorPoints,
+        // selectedSplashIndex...), DÙNG ĐỂ TƯƠNG THÍCH VỚI DỮ LIỆU ĐÃ LƯU TỪ PHIÊN BẢN CŨ (localStorage)
+        function normalizeHeroShape(hero) {
+            if (!hero.skills || Array.isArray(hero.skills)) hero.skills = {};
+            ["thuong", "kynang", "dacbiet", "bidong"].forEach(key => {
+                if (!hero.skills[key]) hero.skills[key] = { lvl: 1 };
+            });
+            if (typeof hero.favorability !== "number") hero.favorability = 1;
+            if (hero.favorability > FAVOR_MAX_LEVEL) hero.favorability = FAVOR_MAX_LEVEL; // dữ liệu cũ có thể vượt mức tối đa mới
+            if (typeof hero.favorPoints !== "number") hero.favorPoints = 0;
+            if (typeof hero.selectedSplashIndex !== "number") hero.selectedSplashIndex = 0;
+            return hero;
+        }
+
+        function addOrUpgradeHero(heroName) {
+            let owned = myHeroes.find(h => h.name === heroName);
+            if (!owned) {
+                myHeroes.push({
+                    name: heroName, level: 1, favorability: 1, favorPoints: 0, selectedSplashIndex: 0,
+                    yellowStars: 1, redStars: 0,
+                    skills: { thuong: { lvl: 1 }, kynang: { lvl: 1 }, dacbiet: { lvl: 1 }, bidong: { lvl: 1 } },
+                    equips: { mu: null, ao: null, quan: null, giay: null, vukhi: null, trangsuc: null, bua: null }
+                });
+                return { isNew: true, convertedToMedal: false };
+            }
+            normalizeHeroShape(owned); // đảm bảo tướng cũ (từ save cũ) có đủ dữ liệu skills/favor mới
+            if (owned.yellowStars < 5) {
+                owned.yellowStars++;
+            } else if (owned.redStars < 5) {
+                owned.redStars++;
+            } else {
+                myMaterials["Huy Chương"] = (myMaterials["Huy Chương"] || 0) + 10;
+                return { isNew: false, convertedToMedal: true };
+            }
+            return { isNew: false, convertedToMedal: false };
+        }
+
+        // TIẾN TRÌNH VƯỢT ẢI: stage = ải cuối cùng ĐÃ VƯỢT trong chapter hiện tại (0 = chưa vượt ải nào trong chương này)
+        // Ải tiếp theo được mở khóa luôn là (chapter, stage+1). Khi vượt xong ải 10, sang chapter+1, stage reset về 0.
+        let campaignProgress = { chapter: 1, stage: 0 };
+        // ĐỘI HÌNH ĐÃ LƯU: mảng 5 phần tử = index của tướng trong myHeroes (hoặc null nếu ô trống)
+        // Vị trí 0,1 = HÀNG TRÊN (bị quái tấn công trước) · Vị trí 2,3,4 = HÀNG DƯỚI
+        let playerFormation = [null, null, null, null, null];
+
         let userStats = { tickets: 200, diamonds: 10000, gold: 100000 };
         
         let myHeroes = [
-            { name: "Thỏ Ngọc", level: 39, favorability: 7, yellowStars: 3, redStars: 0, skills: [{ name: "Skill Thỏ", type: "Thiên Phú", lvl: 38 }], equips: { mu: "eq_1", ao: null, quan: null, giay: null, vukhi: "eq_2", trangsuc: null, bua: null } },
-            { name: "Thetis", level: 1, favorability: 1, yellowStars: 1, redStars: 0, skills: [{ name: "Skill Thetis", type: "Thiên Phú", lvl: 1 }], equips: { mu: null, ao: null, quan: null, giay: null, vukhi: null, trangsuc: null, bua: null } }
+            { name: "Thỏ Ngọc", level: 1, favorability: 3, favorPoints: 10, selectedSplashIndex: 0, yellowStars: 3, redStars: 0, skills: { thuong: { lvl: 1 }, kynang: { lvl: 1 }, dacbiet: { lvl: 1 }, bidong: { lvl: 1 } }, equips: { mu: "eq_1", ao: null, quan: null, giay: null, vukhi: "eq_2", trangsuc: null, bua: null } },
+            { name: "Thetis", level: 1, favorability: 1, favorPoints: 0, selectedSplashIndex: 0, yellowStars: 1, redStars: 0, skills: { thuong: { lvl: 1 }, kynang: { lvl: 1 }, dacbiet: { lvl: 1 }, bidong: { lvl: 1 } }, equips: { mu: null, ao: null, quan: null, giay: null, vukhi: null, trangsuc: null, bua: null } }
         ];
 
         let myEquipmentInventory = [
-            { id: "eq_1", slot: "mu", name: "Mũ Thép Sinh Mệnh", icon: "🪖", level: 15, stat: "HP", base: 200, grow: 35, rarity: "SSR" },
-            { id: "eq_2", slot: "vukhi", name: "Thần Kiếm Hiên Viên", icon: "🗡️", level: 20, stat: "ATK", base: 60, grow: 12, rarity: "SSR" }
+            { id: "eq_1", slot: "mu", name: "Mũ Thép Sinh Mệnh", icon: "🪖", level: 15, stat: "HP", base: 200, grow: 35, rarity: "SR" },
+            { id: "eq_2", slot: "vukhi", name: "Thần Kiếm Hiên Viên", icon: "🗡️", level: 20, stat: "ATK", base: 60, grow: 12, rarity: "R" }
         ];
 
-        let myMaterials = { "Hồn Thạch": 50, "Vé Triệu Hồi": 200, "Kim Cương": 10000, "Vàng": 100000 };
+        let myMaterials = { "Hồn Thạch": 50, "Vé Triệu Hồi": 200, "Kim Cương": 10000, "Vàng": 100000, "Huy Chương": 0, "Kẹo": 5, "Trái Tim": 2 };
 
         const MATERIAL_DB = {
             "Hồn Thạch": { icon: "💠", desc: "Vật liệu đột phá cấp độ Anh Hùng." },
             "Vé Triệu Hồi": { icon: "🎫", desc: "Vật phẩm dùng để gacha." },
             "Kim Cương": { icon: "💎", desc: "Tiền tệ cao cấp." },
-            "Vàng": { icon: "🪙", desc: "Tiền tệ thông dụng." }
+            "Vàng": { icon: "🪙", desc: "Tiền tệ thông dụng." },
+            "Huy Chương": { icon: "🏅", desc: "Nhận khi trùng lặp tướng đã đạt 5 sao đỏ (Max). Dùng để đổi tướng." },
+            "Kẹo": { icon: "🍬", desc: "Tặng cho tướng ở tab Yêu Thích để tăng Thân Mật. Nhận được khi Đánh Quái." },
+            "Trái Tim": { icon: "❤️", desc: "Tặng cho tướng ở tab Yêu Thích, tăng nhiều Thân Mật hơn Kẹo. Nhận được khi Đánh Quái." }
         };
+
+        // CHI PHÍ HUY CHƯƠNG ĐỂ ĐỔI 1 TƯỚNG THEO ĐỘ HIẾM
+        const HERO_EXCHANGE_COST = { SSR: 100, SR: 50, R: 20 };
+
+        // THỨ TỰ ƯU TIÊN HIỂN THỊ THEO ĐỘ HIẾM: SSR > SR > R
+        const RARITY_PRIORITY = { SSR: 0, SR: 1, R: 2 };
 
         const MAX_HERO_LEVEL = 100;
         let selectedHeroIndex = 0;
@@ -363,7 +787,7 @@
         function calculateFinalStats(heroIndex) {
             const hero = myHeroes[heroIndex];
             const db = HERO_DB[hero.name];
-            if (!db) return { atk:0, hp:0, def:0, spd:0, bp:0 };
+            if (!db) return { atk: 0, hp: 0, def: 0, spd: 0, critDame: DEFAULT_CRIT_DAME, hitRate: DEFAULT_HIT_RATE, bp: 0 };
             let lvlBonus = hero.level - 1;
             let baseAtk = db.atk + (lvlBonus * 8);
             let baseHp = db.hp + (lvlBonus * 45);
@@ -376,6 +800,9 @@
             let finalHp = baseHp * starMultiplier;
             let finalDef = baseDef * starMultiplier;
             let finalSpd = baseSpd * starMultiplier;
+            // % Crit Dame và % Đánh Trúng là chỉ số dạng % nên KHÔNG nhân theo level/sao, chỉ lấy trực tiếp từ HERO_DB (+ trang bị/ràng buộc nếu có)
+            let finalCritDame = (typeof db.critDame === "number") ? db.critDame : DEFAULT_CRIT_DAME;
+            let finalHitRate = (typeof db.hitRate === "number") ? db.hitRate : DEFAULT_HIT_RATE;
 
             for (let slot in hero.equips) {
                 let eqId = hero.equips[slot];
@@ -390,7 +817,33 @@
                     }
                 }
             }
-            return { atk: Math.floor(finalAtk), hp: Math.floor(finalHp), def: Math.floor(finalDef), spd: Math.floor(finalSpd), bp: Math.floor((finalAtk * 5) + (finalHp * 1) + (finalDef * 3) + (finalSpd * 10)) };
+
+            // RÀNG BUỘC (BOND): NẾU TƯỚNG "ĐỐI TÁC" TRONG CẶP RÀNG BUỘC CŨNG ĐANG ĐƯỢC SỞ HỮU
+            // THÌ CỘNG THÊM % CHỈ SỐ THEO BOND_DB (áp dụng sau khi đã tính trang bị)
+            // atk/hp/def/spd: cộng theo % (nhân thêm) · critDame/hitRate: cộng thẳng số điểm % (chỉ số ràng buộc cộng trực tiếp cho tướng)
+            let bondAtkPct = 0, bondHpPct = 0, bondDefPct = 0, bondSpdPct = 0, bondCritDamePts = 0, bondHitRatePts = 0;
+            getHeroBonds(hero.name).forEach(bond => {
+                if (isHeroOwned(getBondPartnerName(bond, hero.name))) {
+                    bondAtkPct += bond.bonus.atk || 0;
+                    bondHpPct += bond.bonus.hp || 0;
+                    bondDefPct += bond.bonus.def || 0;
+                    bondSpdPct += bond.bonus.spd || 0;
+                    bondCritDamePts += bond.bonus.critDame || 0;
+                    bondHitRatePts += bond.bonus.hitRate || 0;
+                }
+            });
+            finalAtk *= (1 + bondAtkPct);
+            finalHp *= (1 + bondHpPct);
+            finalDef *= (1 + bondDefPct);
+            finalSpd *= (1 + bondSpdPct);
+            finalCritDame += bondCritDamePts;
+            finalHitRate += bondHitRatePts;
+
+            return {
+                atk: Math.floor(finalAtk), hp: Math.floor(finalHp), def: Math.floor(finalDef), spd: Math.floor(finalSpd),
+                critDame: Math.round(finalCritDame), hitRate: Math.min(100, Math.round(finalHitRate)),
+                bp: Math.floor((finalAtk * 5) + (finalHp * 1) + (finalDef * 3) + (finalSpd * 10))
+            };
         }
 
         // ================= HỆ THỐNG LƯU TRỮ DỮ LIỆU (localStorage) =================
@@ -400,11 +853,21 @@
 
         function saveGameState() {
             try {
-                const saveData = { userStats, myHeroes, myEquipmentInventory, myMaterials, savedAt: Date.now() };
+                const saveData = { userStats, myHeroes, myEquipmentInventory, myMaterials, campaignProgress, playerFormation, savedAt: Date.now() };
                 localStorage.setItem(SAVE_KEY, JSON.stringify(saveData));
             } catch (e) {
                 console.error("Lỗi khi lưu dữ liệu game:", e);
             }
+        }
+
+        // TRẢ VỀ THỜI ĐIỂM (ms) CỦA LẦN LƯU GẦN NHẤT TRƯỚC KHI loadGameState() GHI ĐÈ - DÙNG ĐỂ TÍNH QUÀ OFFLINE
+        function peekLastSavedAt() {
+            try {
+                const raw = localStorage.getItem(SAVE_KEY);
+                if (!raw) return null;
+                const data = JSON.parse(raw);
+                return data.savedAt || null;
+            } catch (e) { return null; }
         }
 
         function loadGameState() {
@@ -416,6 +879,15 @@
                 if (data.myHeroes) myHeroes = data.myHeroes;
                 if (data.myEquipmentInventory) myEquipmentInventory = data.myEquipmentInventory;
                 if (data.myMaterials) myMaterials = data.myMaterials;
+                if (data.campaignProgress) campaignProgress = data.campaignProgress;
+                if (data.playerFormation) playerFormation = data.playerFormation;
+                // TƯƠNG THÍCH DỮ LIỆU CŨ: đảm bảo mọi tướng đã lưu đều có đủ skills 4 loại / favorPoints / selectedSplashIndex
+                myHeroes.forEach(normalizeHeroShape);
+                if (typeof myMaterials["Kẹo"] !== "number") myMaterials["Kẹo"] = 0;
+                if (typeof myMaterials["Trái Tim"] !== "number") myMaterials["Trái Tim"] = 0;
+                // TƯƠNG THÍCH DỮ LIỆU CŨ: đảm bảo đội hình luôn có đúng 5 ô, tướng đã bị xóa/không còn sở hữu thì bỏ khỏi ô
+                if (!Array.isArray(playerFormation) || playerFormation.length !== 5) playerFormation = [null, null, null, null, null];
+                playerFormation = playerFormation.map(idx => (typeof idx === "number" && myHeroes[idx]) ? idx : null);
                 return true;
             } catch (e) {
                 console.error("Lỗi khi đọc dữ liệu đã lưu, sẽ dùng dữ liệu mặc định:", e);
@@ -448,16 +920,28 @@
             myHeroes.forEach((_, idx) => { totalTeamBP += calculateFinalStats(idx).bp; });
             document.getElementById('txt-total-bp').innerText = totalTeamBP.toLocaleString('vi-VN');
 
+            // CẬP NHẬT HIỂN THỊ SỐ HUY CHƯƠNG (NÚT ĐỔI TƯỚNG + POPUP)
+            const huyChuong = myMaterials["Huy Chương"] || 0;
+            const elHeader = document.getElementById('txt-huy-chuong-header');
+            const elPopup = document.getElementById('txt-huy-chuong-popup');
+            if (elHeader) elHeader.innerText = huyChuong;
+            if (elPopup) elPopup.innerText = huyChuong;
+
             saveGameState(); // TỰ ĐỘNG LƯU LẠI SAU MỖI LẦN CẬP NHẬT TRẠNG THÁI
         }
 
         function switchScreen(screen) {
+            // GHI CHÚ: "gacha" không còn nút riêng trên Nav Bar (đã chuyển sang nút vô hình ở Sảnh Chính),
+            // nên khi thao tác với nav-${id} luôn kiểm tra phần tử có tồn tại hay không (el ? ... : bỏ qua)
+            // để tránh lỗi khi id không còn nút tương ứng trong DOM.
             ["lobby", "gacha", "heroes", "combat", "bag"].forEach(id => document.getElementById(`view-${id}`).classList.add('hidden'));
-            ["lobby", "gacha", "heroes", "combat", "bag"].forEach(id => document.getElementById(`nav-${id}`).className = "flex flex-col items-center text-slate-500");
+            ["lobby", "gacha", "heroes", "combat", "bag"].forEach(id => { const el = document.getElementById(`nav-${id}`); if (el) el.className = "flex flex-col items-center text-slate-500"; });
             document.getElementById(`view-${screen}`).classList.remove('hidden');
-            document.getElementById(`nav-${screen}`).className = "flex flex-col items-center text-yellow-400 font-bold";
+            const activeNav = document.getElementById(`nav-${screen}`);
+            if (activeNav) activeNav.className = "flex flex-col items-center text-yellow-400 font-bold";
             if (screen === 'heroes') renderHeroesList();
             if (screen === 'bag') switchBagTab('vatlieu');
+            if (screen === 'combat') openStageSelectScreen();
         }
 
         function switchBagTab(tabId) {
@@ -508,31 +992,121 @@
 
         function renderHeroesList() {
             const grid = document.getElementById('heroes-list-grid'); grid.innerHTML = "";
-            myHeroes.forEach((hero, index) => {
+            // ƯU TIÊN HIỂN THỊ TƯỚNG CÓ ĐỘ HIẾM CAO HƠN TRƯỚC (SSR > SR > R)
+            const sortedHeroes = myHeroes
+                .map((hero, index) => ({ hero, index }))
+                .sort((a, b) => {
+                    const rarityA = (HERO_DB[a.hero.name] || {}).rarity || "R";
+                    const rarityB = (HERO_DB[b.hero.name] || {}).rarity || "R";
+                    return RARITY_PRIORITY[rarityA] - RARITY_PRIORITY[rarityB];
+                });
+            sortedHeroes.forEach(({ hero, index }) => {
                 const db = HERO_DB[hero.name] || { avatar: "", rarity: "R" };
+                const borderClass = getRarityBorderClass(db.rarity);
                 grid.innerHTML += `
-                    <div onclick="openHeroDetail(${index})" class="border-2 border-purple-600 bg-slate-800 rounded-xl p-1 flex flex-col items-center justify-center text-center aspect-[3/4] cursor-pointer relative overflow-hidden">
-                        <img src="${db.avatar}" onerror="this.src='https://via.placeholder.com/80?text=${hero.name}'" class="w-full h-20 object-cover rounded-md mb-1">
-                        <p class="text-[9px] font-bold text-white truncate w-full">${hero.name}</p>
-                        <span class="absolute bottom-0.5 right-1 text-[8px] bg-black/70 text-yellow-400 px-1 rounded font-mono">Lv.${hero.level}</span>
+                    <div onclick="openHeroDetail(${index})" class="border-2 ${borderClass} bg-slate-800 rounded-xl p-1 flex flex-col items-center justify-center text-center aspect-[3/4] cursor-pointer relative overflow-hidden">
+                        <img
+        src="${db.avatar}"
+        class="absolute inset-0 w-full h-full object-cover">
+
+    <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent"></div>
+
+    <p class="absolute bottom-5 left-0 right-0 text-white text-xs font-bold">
+        ${hero.name}
+    </p>
+
+    <span class="absolute bottom-1 right-1 bg-black/70 px-1 rounded text-yellow-400 text-[10px]">
+        Lv.${hero.level}
+    </span>
                     </div>`;
             });
         }
 
+        // ================= HỆ THỐNG ĐỔI TƯỚNG BẰNG HUY CHƯƠNG =================
+        function openHeroExchange() {
+            document.getElementById('hero-exchange-popup').classList.remove('hidden');
+            renderHeroExchangeList();
+        }
+
+        function closeHeroExchange() {
+            document.getElementById('hero-exchange-popup').classList.add('hidden');
+        }
+
+        function renderHeroExchangeList() {
+            const container = document.getElementById('hero-exchange-list'); container.innerHTML = "";
+            const huyChuong = myMaterials["Huy Chương"] || 0;
+
+            // ƯU TIÊN HIỂN THỊ TƯỚNG ĐỘ HIẾM CAO TRƯỚC, GIỐNG DANH SÁCH ANH HÙNG
+            const sortedNames = Object.keys(HERO_DB).sort((a, b) => RARITY_PRIORITY[HERO_DB[a].rarity] - RARITY_PRIORITY[HERO_DB[b].rarity]);
+
+            sortedNames.forEach(name => {
+                const db = HERO_DB[name];
+                const cost = HERO_EXCHANGE_COST[db.rarity] || 20;
+                const owned = myHeroes.find(h => h.name === name);
+                const canAfford = huyChuong >= cost;
+                const borderClass = getRarityBorderClass(db.rarity);
+                container.innerHTML += `
+                    <div class="border-2 ${borderClass} bg-slate-900 rounded-xl p-2 flex items-center justify-between">
+                        <div class="flex items-center space-x-2">
+                            <img src="${db.avatar}" onerror="this.src='https://via.placeholder.com/48?text=${name}'" class="w-10 h-10 rounded-lg object-cover">
+                            <div>
+                                <p class="text-white text-[11px] font-bold">${name} <span class="text-[8px] text-slate-400">(${db.rarity})</span></p>
+                                <p class="text-[9px] text-slate-400">${owned ? `Đang có · ⭐${owned.yellowStars}${owned.redStars > 0 ? ' + 🔴' + owned.redStars : ''}` : 'Chưa sở hữu'}</p>
+                            </div>
+                        </div>
+                        <button onclick="exchangeHeroForMedal('${name}')" ${canAfford ? '' : 'disabled'} class="text-[10px] font-bold px-3 py-1.5 rounded-lg whitespace-nowrap ${canAfford ? 'bg-rose-600 text-white' : 'bg-slate-800 text-slate-600 cursor-not-allowed'}">🏅 ${cost}</button>
+                    </div>`;
+            });
+        }
+
+        function exchangeHeroForMedal(heroName) {
+            const db = HERO_DB[heroName];
+            if (!db) return;
+            const cost = HERO_EXCHANGE_COST[db.rarity] || 20;
+            const huyChuong = myMaterials["Huy Chương"] || 0;
+            if (huyChuong < cost) { alert("Không đủ Huy Chương để đổi tướng này!"); return; }
+
+            const owned = myHeroes.find(h => h.name === heroName);
+            const alreadyMaxed = owned && owned.yellowStars >= 5 && owned.redStars >= 5;
+            const confirmMsg = alreadyMaxed
+                ? `"${heroName}" đã đạt tối đa 5 sao đỏ. Đổi tiếp sẽ tốn ${cost} 🏅 nhưng chỉ nhận lại 10 🏅 quy đổi. Vẫn tiếp tục?`
+                : `Dùng ${cost} 🏅 Huy Chương để đổi lấy "${heroName}"?`;
+            if (!confirm(confirmMsg)) return;
+
+            myMaterials["Huy Chương"] = huyChuong - cost;
+            addOrUpgradeHero(heroName);
+
+            renderHeroExchangeList();
+            renderHeroesList();
+            updateUI();
+        }
+
         function openFullscreenHeroImage() {
             const hero = myHeroes[selectedHeroIndex];
-            const db = HERO_DB[hero.name];
-            if(db && db.splash) {
-                document.getElementById('fullscreen-hero-img').src = db.splash;
+            const path = getHeroSplashPath(hero.name, hero.selectedSplashIndex || 0);
+            if (path) {
+                document.getElementById('fullscreen-hero-img').src = path;
                 document.getElementById('fullscreen-hero-overlay').classList.remove('hidden');
             }
         }
 
         function closeFullscreenHeroImage() { document.getElementById('fullscreen-hero-overlay').classList.add('hidden'); }
 
+        // CHẠM VÀO NỬA TRÊN ẢNH NỀN ANH HÙNG -> PHÓNG TO TOÀN MÀN HÌNH.
+        // CHẠM VÀO PHẦN DƯỚI (nơi có tên/chỉ số/tab) SẼ KHÔNG BỊ TÍNH VÌ CÁC KHỐI ĐÓ NẰM TRÊN ẢNH (z-10+).
+        // CHẠM LẦN NỮA vào ảnh đang phóng to sẽ tự ẩn về lại như cũ (đã xử lý ở onclick của #fullscreen-hero-overlay).
+        function handleHeroImageTap(event) {
+            const rect = event.currentTarget.getBoundingClientRect();
+            const tapY = event.clientY - rect.top;
+            if (tapY <= rect.height / 2) {
+                openFullscreenHeroImage();
+            }
+        }
+
         function openHeroDetail(index) {
             selectedHeroIndex = index;
             selectedSlotId = ""; 
+            normalizeHeroShape(myHeroes[index]); // đảm bảo tướng có đủ dữ liệu skills/favor mới trước khi hiển thị
             document.getElementById('view-hero-detail').classList.remove('hidden');
             renderHeroDetailData();
             switchDetailTab('chiso');
@@ -573,12 +1147,14 @@
 
             document.getElementById('det-name').innerText = hero.name;
             document.getElementById('det-level').innerText = `Lv.${hero.level}`;
-            document.getElementById('det-splash').src = db.splash;
+            // DÙNG ẢNH CHÍNH ĐÃ ĐƯỢC NGƯỜI CHƠI CHỌN Ở TAB "YÊU THÍCH" (mặc định index 0 = ảnh gốc splash.png)
+            document.getElementById('det-splash').src = getHeroSplashPath(hero.name, hero.selectedSplashIndex || 0);
             document.getElementById('det-element').innerText = db.element;
             document.getElementById('det-job').innerText = db.job;
             document.getElementById('det-bp').innerText = computed.bp.toLocaleString('vi-VN');
 
-            document.getElementById('det-stars').innerHTML = `<span class="text-yellow-400">${"⭐".repeat(hero.yellowStars)}</span>`;
+            // HIỂN THỊ SAO VÀNG (TỐI ĐA 5), SAU ĐÓ LÀ SAO ĐỎ (TỐI ĐA 5) KHI ĐÃ NÂNG CẤP VƯỢT SAO VÀNG
+            document.getElementById('det-stars').innerHTML = `<span class="text-yellow-400">${"⭐".repeat(hero.yellowStars)}</span><span class="text-red-500">${"⭐".repeat(hero.redStars)}</span>`;
             document.getElementById('stat-det-atk').innerText = computed.atk;
             document.getElementById('stat-det-hp').innerText = computed.hp;
             document.getElementById('stat-det-def').innerText = computed.def;
@@ -599,7 +1175,161 @@
             };
             renderSlots('equip-left', LEFT_SLOTS);
             renderSlots('equip-right', RIGHT_SLOTS);
+
+            renderSkillsPanel(hero);
+            renderBondPanel(hero);
+            renderFavorPanel(hero);
+        }
+
+        // ===================================================================== //
+        // TAB KỸ NĂNG: hiển thị 4 hàng Đánh Thường / Kỹ Năng / Kỹ Năng Đặc Biệt / //
+        // Kỹ Năng Bị Động, kèm cấp hiện tại (Lv.x / cấp tướng) và nút nâng cấp.    //
+        // ===================================================================== //
+        function renderSkillsPanel(hero) {
+            const container = document.getElementById('skills-list-container');
+            if (!container) return;
+            const template = getHeroSkillTemplate(hero.name);
+            container.innerHTML = "";
+            SKILL_TYPES.forEach(({ key, label }) => {
+                const tmpl = template[key] || DEFAULT_SKILL_TEMPLATE[key];
+                const skillObj = hero.skills[key];
+                const atMax = skillObj.lvl >= hero.level;
+                container.innerHTML += `
+                    <div class="bg-slate-900 p-2 rounded-lg border border-slate-800 flex items-center justify-between">
+                        <div class="flex items-center space-x-2 min-w-0">
+                            <span class="text-lg shrink-0">${tmpl.icon}</span>
+                            <div class="min-w-0">
+                                <p class="text-white font-bold text-[10px] truncate">${label} · ${tmpl.name}</p>
+                                <p class="text-slate-500 text-[8px] leading-tight">${tmpl.desc}</p>
+                            </div>
+                        </div>
+                        <div class="text-right shrink-0 pl-2">
+                            <p class="font-mono text-yellow-400 text-[10px] mb-0.5">Lv.${skillObj.lvl}/${hero.level}</p>
+                            <button onclick="upgradeHeroSkill('${key}')" ${atMax ? 'disabled' : ''} class="text-[8px] font-bold px-2 py-1 rounded ${atMax ? 'bg-slate-800 text-slate-600 cursor-not-allowed' : 'bg-cyan-700 text-white'}">${atMax ? 'Tối đa' : 'Nâng cấp'}</button>
+                        </div>
+                    </div>`;
+            });
+        }
+
+        // NÂNG CẤP 1 KỸ NĂNG CỦA TƯỚNG ĐANG XEM. CHI PHÍ: Vàng, tăng dần theo cấp hiện tại.
+        // CẤP KỸ NĂNG TỐI ĐA = CẤP ĐỘ TƯỚNG (hero.level) - phải tăng cấp tướng trước ở tab "Thông tin".
+        function upgradeHeroSkill(skillKey) {
+            const hero = myHeroes[selectedHeroIndex];
+            const skillObj = hero.skills[skillKey];
+            if (!skillObj) return;
+            if (skillObj.lvl >= hero.level) { alert("Cấp kỹ năng đã bằng cấp độ tướng! Hãy tăng cấp tướng ở tab Thông tin để nâng thêm."); return; }
+            const cost = skillObj.lvl * 300; // CHỈNH GIÁ NÂNG CẤP KỸ NĂNG TẠI ĐÂY
+            if (userStats.gold < cost) { alert(`Không đủ Vàng! Cần ${cost.toLocaleString('vi-VN')} 🪙`); return; }
+            userStats.gold -= cost;
+            skillObj.lvl++;
+            renderHeroDetailData();
+            updateUI();
+        }
+
+        // ===================================================================== //
+        // TAB RÀNG BUỘC: liệt kê các cặp duyên phận liên quan tới tướng đang xem, //
+        // hiển thị đã kích hoạt (đối tác cũng đang sở hữu) hay chưa, và % cộng thêm. //
+        // ===================================================================== //
+        function renderBondPanel(hero) {
+            const container = document.getElementById('bond-list-container');
+            if (!container) return;
+            const bonds = getHeroBonds(hero.name);
+            if (bonds.length === 0) {
+                container.innerHTML = `<div class="text-slate-500 text-center italic py-4 text-[10px]">Tướng này chưa có duyên phận / ràng buộc nào.</div>`;
+                return;
+            }
+            container.innerHTML = "";
+            bonds.forEach(bond => {
+                const partner = getBondPartnerName(bond, hero.name);
+                const active = isHeroOwned(partner);
+                const bonusParts = [];
+                if (bond.bonus.atk) bonusParts.push(`+${Math.round(bond.bonus.atk * 100)}% ATK`);
+                if (bond.bonus.hp) bonusParts.push(`+${Math.round(bond.bonus.hp * 100)}% HP`);
+                if (bond.bonus.def) bonusParts.push(`+${Math.round(bond.bonus.def * 100)}% DEF`);
+                if (bond.bonus.spd) bonusParts.push(`+${Math.round(bond.bonus.spd * 100)}% SPD`);
+                container.innerHTML += `
+                    <div class="bg-slate-900 p-2 rounded-lg border ${active ? 'border-emerald-600' : 'border-slate-800'}">
+                        <div class="flex items-center justify-between">
+                            <p class="text-white font-bold text-[10px]">${bond.name}</p>
+                            <p class="text-[8px] font-bold ${active ? 'text-emerald-400' : 'text-slate-500'}">${active ? '✅ ĐÃ KÍCH HOẠT' : '🔒 CHƯA ĐỦ TƯỚNG'}</p>
+                        </div>
+                        <p class="text-slate-500 text-[8px] mt-0.5">${bond.desc}</p>
+                        <div class="flex items-center justify-between mt-1">
+                            <p class="text-[8px] text-slate-400">Kết hợp với: <span class="${active ? 'text-emerald-400' : 'text-slate-400'} font-bold">${partner}</span></p>
+                            <p class="text-[8px] text-cyan-400 font-mono font-bold">${bonusParts.join(' · ')}</p>
+                        </div>
+                    </div>`;
+            });
+        }
+
+        // ===================================================================== //
+        // TAB YÊU THÍCH / THÂN MẬT: thanh cấp độ + điểm, số Kẹo/Trái Tim, và bộ   //
+        // sưu tập ảnh đã mở khoá (chạm ảnh để đặt làm ảnh chính - selectedSplashIndex). //
+        // ===================================================================== //
+        function renderFavorPanel(hero) {
+            const atMaxFavor = hero.favorability >= FAVOR_MAX_LEVEL;
+            const needed = atMaxFavor ? 0 : favorPointsNeeded(hero.favorability);
+
             document.getElementById('txt-fav-lvl-text').innerText = hero.favorability;
+            document.getElementById('txt-fav-lvl-max').innerText = FAVOR_MAX_LEVEL;
+            document.getElementById('txt-fav-points').innerText = atMaxFavor ? "MAX" : (hero.favorPoints || 0);
+            document.getElementById('txt-fav-points-needed').innerText = atMaxFavor ? "" : needed;
+            document.getElementById('bar-fav-progress').style.width = atMaxFavor ? "100%" : `${Math.min(100, ((hero.favorPoints || 0) / needed) * 100)}%`;
+            document.getElementById('txt-candy-count').innerText = myMaterials["Kẹo"] || 0;
+            document.getElementById('txt-heart-count').innerText = myMaterials["Trái Tim"] || 0;
+
+            renderFavorGallery(hero);
+        }
+
+        // VẼ BỘ SƯU TẬP ẢNH ĐÃ MỞ KHOÁ (favorability = số ảnh đã mở, index 0..favorability-1)
+        function renderFavorGallery(hero) {
+            const container = document.getElementById('fav-gallery-list');
+            if (!container) return;
+            container.innerHTML = "";
+            const unlockedCount = hero.favorability;
+            for (let i = 0; i < unlockedCount; i++) {
+                const path = getHeroSplashPath(hero.name, i);
+                const isSelected = (hero.selectedSplashIndex || 0) === i;
+                container.innerHTML += `
+                    <div onclick="setHeroMainSplash(${i})" class="aspect-[3/4] rounded-md overflow-hidden border-2 ${isSelected ? 'border-yellow-400' : 'border-slate-700'} cursor-pointer relative">
+                        <img src="${path}" onerror="this.src='https://via.placeholder.com/80x100?text=Anh+${i}'" class="w-full h-full object-cover">
+                        ${isSelected ? '<span class="absolute bottom-0 inset-x-0 bg-yellow-500 text-slate-950 text-[7px] font-black text-center">ĐANG DÙNG</span>' : ''}
+                    </div>`;
+            }
+            // Ô khoá gợi ý còn ảnh chưa mở (mờ, viền đứt nét)
+            if (unlockedCount < FAVOR_MAX_LEVEL) {
+                container.innerHTML += `<div class="aspect-[3/4] rounded-md border-2 border-dashed border-slate-700 flex items-center justify-center text-slate-600 text-lg">🔒</div>`;
+            }
+        }
+
+        // ĐẶT 1 ẢNH ĐÃ MỞ KHOÁ LÀM "ẢNH CHÍNH" CỦA TƯỚNG (hiện ở màn chi tiết & khi Đánh Quái)
+        function setHeroMainSplash(index) {
+            const hero = myHeroes[selectedHeroIndex];
+            hero.selectedSplashIndex = index;
+            renderHeroDetailData();
+            updateUI();
+        }
+
+        // TẶNG KẸO ('candy') HOẶC TRÁI TIM ('heart') CHO TƯỚNG ĐANG XEM ĐỂ TĂNG ĐIỂM THÂN MẬT.
+        // KHI ĐỦ ĐIỂM SẼ TỰ ĐỘNG LÊN CẤP THÂN MẬT (VÀ MỞ THÊM 1 ẢNH MỚI TRONG BỘ SƯU TẬP).
+        function giftFavorItem(itemType) {
+            const hero = myHeroes[selectedHeroIndex];
+            if (hero.favorability >= FAVOR_MAX_LEVEL) { alert("Thân mật đã đạt cấp độ tối đa!"); return; }
+            const matKey = itemType === "candy" ? "Kẹo" : "Trái Tim";
+            const pointsGain = itemType === "candy" ? CANDY_FAVOR_POINTS : HEART_FAVOR_POINTS;
+            if ((myMaterials[matKey] || 0) < 1) { alert(`Bạn không có ${matKey}! Hãy vào màn "Chiến Đấu" bấm "Đánh Quái" để thu thập thêm.`); return; }
+
+            myMaterials[matKey]--;
+            hero.favorPoints = (hero.favorPoints || 0) + pointsGain;
+
+            let needed = favorPointsNeeded(hero.favorability);
+            while (hero.favorPoints >= needed && hero.favorability < FAVOR_MAX_LEVEL) {
+                hero.favorPoints -= needed;
+                hero.favorability++; // LÊN CẤP THÂN MẬT -> TỰ ĐỘNG MỞ THÊM 1 ẢNH MỚI (xem renderFavorGallery)
+                needed = favorPointsNeeded(hero.favorability);
+            }
+            renderHeroDetailData();
+            updateUI();
         }
 
         function selectEquipSlot(slotId) {
@@ -713,13 +1443,8 @@
                     const randomName = pickHeroByRarity(rolledRarity);
                     const template = HERO_DB[randomName];
                     
-                    // Kiểm tra nếu đã sở hữu tướng thì tự động cộng thêm sao, nếu chưa thì thêm mới vào đội hình
-                    let owned = myHeroes.find(h => h.name === randomName);
-                    if (owned) {
-                        if (owned.yellowStars < 5) owned.yellowStars++;
-                    } else {
-                        myHeroes.push({ name: randomName, level: 1, favorability: 1, yellowStars: 1, redStars: 0, skills: [{ name: "Thiên Phú", type: "Chủ Động", lvl: 1 }], equips: { mu: null, ao: null, quan: null, giay: null, vukhi: null, trangsuc: null, bua: null } });
-                    }
+                    // Kiểm tra nếu đã sở hữu tướng thì tự động nâng sao/quy đổi huy chương, nếu chưa thì thêm mới vào đội hình
+                    addOrUpgradeHero(randomName);
 
                     const resultItem = { name: randomName, sub: `Hệ ${template.element} - ${template.job}`, icon: "👤", type: "HERO", rarity: template.rarity, splash: template.splash };
                     currentRollResults.push(resultItem);
@@ -816,8 +1541,692 @@
             updateUI();
         }
 
+        // ================================================================================= //
+        // HỆ THỐNG CHIẾN ĐẤU - VƯỢT ẢI (MAP 1-1 → 1-10, 2-1 → 2-10, ... SỐ CHƯƠNG LÀ VÔ TẬN)   //
+        // ================================================================================= //
+
+        // 7 HỆ MỞ RỘNG + BẢNG KHẮC CHẾ 1 CHIỀU: hệ tấn công khắc hệ mục tiêu → +5% sát thương
+        // Ánh Sáng khắc Bóng Tối · Mộc khắc Thổ · Thổ khắc Thủy · Thủy khắc Hỏa · Hỏa khắc Kim · Kim khắc Mộc
+        const ELEMENTS = ["ÁNH SÁNG", "BÓNG TỐI", "MỘC", "THỔ", "THỦY", "HỎA", "KIM"];
+        const ELEMENT_COUNTER = { "ÁNH SÁNG": "BÓNG TỐI", "MỘC": "THỔ", "THỔ": "THỦY", "THỦY": "HỎA", "HỎA": "KIM", "KIM": "MỘC" };
+        const ELEMENT_ICON = { "ÁNH SÁNG": "✨", "BÓNG TỐI": "🌑", "MỘC": "🌿", "THỔ": "🪨", "THỦY": "💧", "HỎA": "🔥", "KIM": "⚙️", "PHONG": "🌪️", "LÔI": "⚡" };
+        function getElementDamageMultiplier(atkElement, defElement) {
+            return ELEMENT_COUNTER[atkElement] === defElement ? 1.05 : 1;
+        }
+
+        // VỊ TRÍ TRẬN HÌNH (5 Ô): 0,1 = HÀNG TRÊN (bị đối phương nhắm tấn công trước) · 2,3,4 = HÀNG DƯỚI
+        // Mục tiêu tấn công luôn là ô còn sống có index nhỏ nhất (tức hàng trên trước, hàng dưới sau)
+        const FORMATION_TOP_SLOTS = [0, 1];
+        const FORMATION_BOTTOM_SLOTS = [2, 3, 4];
+
+        function stageLabel(chapter, stage) { return `${chapter}-${stage}`; }
+
+        let openedStage = { chapter: 1, stage: 1 };      // ải đang xem/chuẩn bị ở màn hình prep
+        let currentStageMonsters = [];                    // đội hình quái đã sinh ngẫu nhiên cho ải đang mở
+        let currentStageElement = "KIM";
+        let selectedPoolHeroIndex = null;                 // tướng đang chọn (tap) trong popup sắp xếp đội hình, chờ tap vào ô để đặt
+        let battlePlaybackLog = [];
+        let battlePlaybackIndex = 0;
+        let battlePlaybackTimer = null;
+        let battlePlaybackUnits = [];                     // trạng thái HP/sống-chết hiện tại để vẽ lại trong lúc phát trận đấu
+        let lastBattleWasWin = false;
+        let lastBattleRewards = {};
+
+        // ẢI (chapter, stage) ĐÃ MỞ KHÓA CHƯA: mọi ải thuộc chương đã qua luôn mở, ải kế tiếp ải vừa vượt trong chương hiện tại cũng mở
+        function isStageUnlocked(chapter, stage) {
+            if (chapter < campaignProgress.chapter) return true;
+            if (chapter === campaignProgress.chapter) return stage <= campaignProgress.stage + 1;
+            return false;
+        }
+        function isStageCleared(chapter, stage) {
+            return chapter < campaignProgress.chapter || (chapter === campaignProgress.chapter && stage <= campaignProgress.stage);
+        }
+
+        // MỞ MÀN CHIẾN ĐẤU: theo yêu cầu KHÔNG hiện lưới 10 ô / không cho mở lại ải cũ, chỉ hiện đúng ải hiện tại (ải kế tiếp cần vượt)
+        function openStageSelectScreen() {
+            switchCombatSub('stageselect');
+            renderCurrentStageDisplay();
+        }
+
+        function switchCombatSub(subId) {
+            ["stageselect", "prep", "battle"].forEach(id => document.getElementById(`combat-sub-${id}`).classList.add('hidden'));
+            document.getElementById(`combat-sub-${subId}`).classList.remove('hidden');
+        }
+
+        // CHỈ HIỂN THỊ NHÃN ẢI HIỆN TẠI (VD "2-3") - KHÔNG CẦN LƯỚI 10 Ô, KHÔNG CHO MỞ LẠI ẢI ĐÃ VƯỢT
+        function renderCurrentStageDisplay() {
+            const label = stageLabel(campaignProgress.chapter, campaignProgress.stage + 1 > 10 ? 1 : campaignProgress.stage + 1);
+            const el = document.getElementById('txt-current-stage-label');
+            if (el) el.innerText = label;
+        }
+
+        function continueLastStage() {
+            const nextStage = campaignProgress.stage + 1 > 10 ? 1 : campaignProgress.stage + 1;
+            const nextChapter = campaignProgress.stage + 1 > 10 ? campaignProgress.chapter + 1 : campaignProgress.chapter;
+            openStage(nextChapter, nextStage);
+        }
+
+        // TÊN KỸ NĂNG NGẪU NHIÊN CHO QUÁI VẬT THEO HỆ (chỉ mang tính hiển thị, giúp quái "giống tướng thường" có ảnh/kĩ năng/level)
+        const MONSTER_SKILL_POOL = {
+            "ÁNH SÁNG": ["Thánh Quang Trừng Phạt", "Hào Quang Thiêu Đốt"],
+            "BÓNG TỐI": ["Vực Thẳm Nuốt Chửng", "Ám Ảnh Tử Vong"],
+            "MỘC": ["Gai Độc Sinh Sôi", "Rễ Cây Trói Buộc"],
+            "THỔ": ["Địa Chấn Cuồng Nộ", "Nham Thạch Đè Nát"],
+            "THỦY": ["Sóng Thần Cuộn Trào", "Băng Giá Đóng Kín"],
+            "HỎA": ["Cuồng Diệm Thiêu Rụi", "Nham Nhạc Bùng Cháy"],
+            "KIM": ["Lưỡi Thép Xé Toạc", "Giáp Kim Cương Cứng"]
+        };
+        function pickMonsterSkillNames(element) {
+            const pool = MONSTER_SKILL_POOL[element] || ["Cắn Xé Man Rợ", "Cuồng Bạo Săn Mồi"];
+            return { kynang: pool[0], dacbiet: pool[1] || pool[0] };
+        }
+
+        // SINH NGẪU NHIÊN ĐỘI HÌNH QUÁI CHO 1 ẢI: chỉ số quái tăng dần theo độ khó (chương*10+ải)
+        // Hệ (nguyên tố) của quái là NGẪU NHIÊN và DÙNG CHUNG cho cả đội hình quái trong ải đó.
+        // MỖI QUÁI ĐƯỢC COI NHƯ 1 "TƯỚNG ĐỐI ĐỊCH": có tên, level, kĩ năng, hệ nguyên tố riêng như tướng của người chơi.
+        function generateStageMonsters(chapter, stage) {
+            const difficulty = (chapter - 1) * 10 + stage;
+            const element = ELEMENTS[Math.floor(Math.random() * ELEMENTS.length)];
+            const count = Math.min(5, 3 + Math.floor((chapter - 1) / 3) + (Math.random() < 0.5 ? 0 : 1));
+            const monsters = [];
+            for (let i = 0; i < count; i++) {
+                const variance = 0.9 + Math.random() * 0.2;
+                const hp = Math.round((70 + difficulty * 16) * variance);
+                const skillNames = pickMonsterSkillNames(element);
+                monsters.push({
+                    id: `mon_${i}`, name: `Quái ${stageLabel(chapter, stage)}-${i + 1}`, element,
+                    level: difficulty,
+                    skillName: skillNames.kynang,
+                    specialSkillName: skillNames.dacbiet,
+                    atk: Math.round((14 + difficulty * 3) * variance),
+                    hp, maxHp: hp,
+                    def: Math.round((4 + difficulty * 1.5) * variance),
+                    spd: Math.round(75 + Math.random() * 25 + difficulty / 5),
+                    critDame: 130 + Math.floor(Math.random() * 20), // quái: 130-149% sát thương chí mạng
+                    hitRate: 82 + Math.floor(Math.random() * 10),   // quái: 82-91% cơ hội đánh trúng
+                    slotIndex: i, side: 'monster'
+                });
+            }
+            return { monsters, element };
+        }
+
+        function openStage(chapter, stage) {
+            openedStage = { chapter, stage };
+            const gen = generateStageMonsters(chapter, stage);
+            currentStageMonsters = gen.monsters;
+            currentStageElement = gen.element;
+            switchCombatSub('prep');
+            renderPrepScreen();
+        }
+
+        function renderPrepScreen() {
+            document.getElementById('txt-prep-title').innerText = `Ải ${stageLabel(openedStage.chapter, openedStage.stage)}`;
+            document.getElementById('txt-prep-element').innerText = currentStageElement;
+
+            const mgrid = document.getElementById('prep-monster-grid'); mgrid.innerHTML = "";
+            currentStageMonsters.forEach(m => {
+                mgrid.innerHTML += `
+                    <div class="bg-slate-950 border border-red-900/40 rounded-lg p-1 text-center" title="${m.skillName}">
+                        <span class="text-lg block">${ELEMENT_ICON[m.element] || '👹'}</span>
+                        <p class="text-[7px] text-white font-bold truncate">${m.name.split('-')[0]}</p>
+                        <p class="text-[7px] text-yellow-400 font-mono">Lv.${m.level}</p>
+                        <p class="text-[7px] text-slate-400 font-mono">${m.hp} HP</p>
+                    </div>`;
+            });
+            for (let i = currentStageMonsters.length; i < 5; i++) mgrid.innerHTML += `<div class="aspect-square"></div>`;
+
+            let teamBp = 0;
+            const pgrid = document.getElementById('prep-player-grid'); pgrid.innerHTML = "";
+            for (let slot = 0; slot < 5; slot++) {
+                const heroIdx = playerFormation[slot];
+                if (heroIdx !== null && myHeroes[heroIdx]) {
+                    const hero = myHeroes[heroIdx];
+                    const db = HERO_DB[hero.name] || {};
+                    teamBp += calculateFinalStats(heroIdx).bp;
+                    pgrid.innerHTML += `
+                        <div class="bg-slate-950 border border-cyan-800/60 rounded-lg overflow-hidden">
+                            <img src="${db.avatar}" class="w-full flex-1 object-cover rounded">
+			   <p class="text-[9px] text-white font-bold truncate mt-1"> ${hero.name} </p>
+                        </div>`;
+                } else {
+                    pgrid.innerHTML += `<div class="bg-slate-950/60 border border-dashed border-slate-700 rounded-lg aspect-square flex items-center justify-center text-slate-700 text-[9px]">Trống</div>`;
+                }
+            }
+            document.getElementById('txt-prep-team-bp').innerText = teamBp.toLocaleString('vi-VN');
+        }
+
+        // ================= POPUP SẮP XẾP ĐỘI HÌNH: KÉO-THẢ (chuột/HTML5 drag) + TAP-CHỌN-RỒI-TAP-Ô (mobile) =================
+        function openFormationEditor() {
+            selectedPoolHeroIndex = null;
+            document.getElementById('formation-editor-popup').classList.remove('hidden');
+            renderFormationEditor();
+        }
+        function closeFormationEditor() {
+            document.getElementById('formation-editor-popup').classList.add('hidden');
+            renderPrepScreen();
+            saveGameState();
+        }
+
+        function renderFormationSlotHtml(slot) {
+            const heroIdx = playerFormation[slot];
+            if (heroIdx !== null && myHeroes[heroIdx]) {
+                const hero = myHeroes[heroIdx];
+                const db = HERO_DB[hero.name] || {};
+                return `
+                    <div ondragover="event.preventDefault()" ondrop="handleSlotDrop(event, ${slot})" onclick="handleSlotTap(${slot})"
+                        class="relative bg-slate-900 border-2 border-cyan-500 rounded-xl aspect-square flex flex-col items-center justify-center p-1 cursor-pointer">
+                        <button onclick="event.stopPropagation(); removeHeroFromSlot(${slot})" class="absolute -top-1.5 -right-1.5 bg-red-600 text-white w-4 h-4 rounded-full text-[9px] leading-none z-10">✖</button>
+                        <img src="${db.avatar}" onerror="this.src='https://via.placeholder.com/60?text=${hero.name}'" class="w-full h-full object-cover rounded mb-0.5">
+                        <p class="text-[7px] text-white font-bold truncate w-full text-center">${hero.name}</p>
+                    </div>`;
+            }
+            return `
+                <div ondragover="event.preventDefault()" ondrop="handleSlotDrop(event, ${slot})" onclick="handleSlotTap(${slot})"
+                    class="bg-slate-900/60 border-2 border-dashed border-slate-600 rounded-xl aspect-square flex items-center justify-center text-slate-600 text-[9px] cursor-pointer">
+                    + Ô Trống
+                </div>`;
+        }
+
+        function renderFormationEditor() {
+            document.getElementById('formation-row-top').innerHTML = FORMATION_TOP_SLOTS.map(s => renderFormationSlotHtml(s)).join('');
+            document.getElementById('formation-row-bottom').innerHTML = FORMATION_BOTTOM_SLOTS.map(s => renderFormationSlotHtml(s)).join('');
+
+            const pool = document.getElementById('formation-hero-pool'); pool.innerHTML = "";
+            if (myHeroes.length === 0) { pool.innerHTML = `<p class="col-span-4 text-center text-slate-500 italic text-[10px] py-4">Bạn chưa sở hữu tướng nào.</p>`; return; }
+            myHeroes.forEach((hero, idx) => {
+                const alreadyPlaced = playerFormation.includes(idx);
+                const db = HERO_DB[hero.name] || {};
+                const isSelected = selectedPoolHeroIndex === idx;
+                pool.innerHTML += `
+                    <div draggable="true" ondragstart="handleHeroDragStart(event, ${idx})" onclick="selectPoolHero(${idx})"
+                        class="border-2 ${isSelected ? 'border-yellow-400' : alreadyPlaced ? 'border-emerald-600' : 'border-slate-700'} bg-slate-800 rounded-lg p-1 text-center aspect-[3/4] flex flex-col items-center justify-center cursor-grab ${alreadyPlaced ? 'opacity-50' : ''}">
+                        <img src="${db.avatar}" onerror="this.src='https://via.placeholder.com/60?text=${hero.name}'" class="w-full h-full object-cover rounded mb-0.5">
+                        <p class="text-[7px] text-white font-bold truncate w-full">${hero.name}</p>
+                        ${alreadyPlaced ? '<span class="text-[7px] text-emerald-400">✔ Đã xếp</span>' : ''}
+                    </div>`;
+            });
+        }
+
+        function handleHeroDragStart(evt, heroIndex) { evt.dataTransfer.setData("text/plain", String(heroIndex)); }
+        function handleSlotDrop(evt, slot) {
+            evt.preventDefault();
+            const heroIndex = parseInt(evt.dataTransfer.getData("text/plain"), 10);
+            if (Number.isNaN(heroIndex)) return;
+            placeHeroInSlot(heroIndex, slot);
+        }
+        function selectPoolHero(heroIndex) {
+            selectedPoolHeroIndex = (selectedPoolHeroIndex === heroIndex) ? null : heroIndex;
+            renderFormationEditor();
+        }
+        function handleSlotTap(slot) {
+            if (selectedPoolHeroIndex === null) return; // đang không chọn tướng nào để đặt bằng tap, chỉ dùng kéo-thả
+            placeHeroInSlot(selectedPoolHeroIndex, slot);
+            selectedPoolHeroIndex = null;
+        }
+        function placeHeroInSlot(heroIndex, slot) {
+            if (!myHeroes[heroIndex]) return;
+            // GỠ TƯỚNG NÀY KHỎI Ô CŨ (NẾU ĐANG Ở Ô KHÁC) TRƯỚC KHI ĐẶT VÀO Ô MỚI, TRÁNH 1 TƯỚNG ĐỨNG 2 Ô
+            playerFormation = playerFormation.map(v => (v === heroIndex ? null : v));
+            playerFormation[slot] = heroIndex;
+            renderFormationEditor();
+        }
+        function removeHeroFromSlot(slot) {
+            playerFormation[slot] = null;
+            renderFormationEditor();
+        }
+
+        // ================= MÔ PHỎNG + PHÁT LẠI TRẬN ĐẤU =================
+        // Khi bấm "Tấn Công": dùng LUÔN đội hình đã lưu (playerFormation), không bắt chọn lại.
+        function startBattle() {
+            const hasAnyHero = playerFormation.some(v => v !== null);
+            if (!hasAnyHero) { alert("Hãy sắp xếp ít nhất 1 tướng vào đội hình trước khi tấn công!"); return; }
+
+            const playerUnits = [];
+            playerFormation.forEach((heroIdx, slot) => {
+                if (heroIdx === null || !myHeroes[heroIdx]) return;
+                const hero = myHeroes[heroIdx];
+                const db = HERO_DB[hero.name] || {};
+                const stats = calculateFinalStats(heroIdx);
+                playerUnits.push({
+                    id: `p_${slot}`, name: hero.name, element: db.element || "KIM", level: hero.level,
+                    atk: stats.atk, hp: stats.hp, maxHp: stats.hp, def: stats.def, spd: stats.spd,
+                    critDame: stats.critDame, hitRate: stats.hitRate,
+                    slotIndex: slot, side: 'player', avatar: db.avatar,
+                    splash: getHeroSplashPath(hero.name, hero.selectedSplashIndex || 0) || db.avatar
+                });
+            });
+            const monsterUnits = currentStageMonsters.map(m => ({ ...m }));
+
+            const result = simulateBattle(playerUnits, monsterUnits);
+            battlePlaybackLog = result.log;
+            lastBattleWasWin = result.playerWon;
+            battlePlaybackUnits = [...playerUnits, ...monsterUnits].map(u => ({ ...u, curHp: u.hp, alive: true }));
+            battlePlaybackIndex = 0;
+
+            switchCombatSub('battle');
+            document.getElementById('btn-battle-skip').classList.remove('hidden');
+            renderBattleUnits();
+            if (battlePlaybackTimer) clearInterval(battlePlaybackTimer);
+            battlePlaybackTimer = setInterval(playNextBattleEvent, 550);
+        }
+
+        // ================================================================================= //
+        // CÔNG THỨC TÍNH SÁT THƯƠNG (dựa trên đủ 6 chỉ số: Tấn Công, Phòng Thủ, HP, Tốc Độ,     //
+        // % Crit Dame, % Đánh Trúng):                                                          //
+        //   1) Roll % Đánh Trúng của người ra đòn → trượt thì không gây sát thương ("Trượt!")   //
+        //   2) Sát thương gốc = ATK * (% hệ số kỹ năng) * [100 / (100 + PHÒNG THỦ mục tiêu)]     //
+        //      (phòng thủ giảm trừ theo tỉ lệ %, không phải trừ thẳng, để không bao giờ ra dame âm) //
+        //   3) Nhân thêm hệ số khắc chế nguyên tố (+5% nếu khắc hệ mục tiêu)                     //
+        //   4) Roll chí mạng theo BASE_CRIT_RATE cố định → nếu trúng, nhân thêm (% Crit Dame/100) //
+        //   5) Ngẫu nhiên dao động nhẹ ±10% để trận đấu không bị lặp lại y hệt nhau              //
+        // TỐC ĐỘ (SPD) không dùng trong công thức sát thương mà dùng để xếp THỨ TỰ RA ĐÒN         //
+        // (SPD cao hơn ra đòn trước) - đã xử lý trong vòng lặp bên dưới.                          //
+        // ================================================================================= //
+        const BASE_CRIT_RATE = 15; // % tỉ lệ chí mạng cơ bản áp dụng chung cho mọi đơn vị
+
+        function resolveDamageInstance(attacker, target, multiplier) {
+            const hitRoll = Math.random() * 100;
+            if (hitRoll >= (attacker.hitRate || DEFAULT_HIT_RATE)) {
+                return { dmg: 0, isMiss: true, isCrit: false, elemBonus: false };
+            }
+            const mitigation = 100 / (100 + Math.max(0, target.def));
+            let dmg = attacker.atk * multiplier * mitigation;
+            const elemMult = getElementDamageMultiplier(attacker.element, target.element);
+            dmg *= elemMult;
+            const isCrit = Math.random() * 100 < BASE_CRIT_RATE;
+            if (isCrit) dmg *= ((attacker.critDame || DEFAULT_CRIT_DAME) / 100);
+            dmg *= (0.9 + Math.random() * 0.2);
+            return { dmg: Math.max(1, Math.round(dmg)), isMiss: false, isCrit, elemBonus: elemMult > 1 };
+        }
+
+        // XÁC ĐỊNH MỤC TIÊU CỦA 1 KỸ NĂNG DỰA VÀO KIỂU targeting KHAI BÁO TRONG HERO_COMBAT_SKILLS
+        function pickSkillTargets(attacker, targeting, allUnits) {
+            const enemySide = attacker.side === 'player' ? 'monster' : 'player';
+            const enemiesAlive = allUnits.filter(u => u.side === enemySide && u.alive);
+            if (enemiesAlive.length === 0) return [];
+            if (targeting === 'all') return enemiesAlive.slice();
+            if (targeting === 'lowestHp') {
+                let lowest = enemiesAlive[0];
+                enemiesAlive.forEach(u => { if (u.curHp < lowest.curHp) lowest = u; });
+                return [lowest];
+            }
+            const sortedBySlot = enemiesAlive.slice().sort((a, b) => a.slotIndex - b.slotIndex);
+            if (targeting === 'pierce2') return sortedBySlot.slice(0, 2);
+            return [sortedBySlot[0]]; // 'default': ưu tiên hàng trên trước (slotIndex nhỏ nhất)
+        }
+
+        // MẪU KỸ NĂNG MẶC ĐỊNH CHO QUÁI VẬT THEO TỪNG CẤP (dùng chung công thức sát thương với tướng)
+        const MONSTER_SKILL_TIERS = {
+            thuong:  { multiplier: 1.0, targeting: 'default' },
+            kynang:  { multiplier: 1.6, targeting: 'lowestHp' },
+            dacbiet: { multiplier: 1.9, targeting: 'all' }
+        };
+
+        // TÍNH TOÀN BỘ TRẬN ĐẤU 1 LẦN (ĐỒNG BỘ): mỗi đơn vị RA ĐÒN theo SPD giảm dần (SPD cao đánh trước).
+        // MỖI ĐƠN VỊ TỰ CÓ CHU KỲ 3 LƯỢT RIÊNG: lượt 1 luôn đánh thường, lượt 2 có 40% dùng kỹ năng (không thì đánh thường),
+        // lượt 3 có 30% dùng kỹ năng đặc biệt (không thì đánh thường), rồi lặp lại từ lượt 1.
+        function simulateBattle(playerUnits, monsterUnits) {
+            const allUnits = [...playerUnits, ...monsterUnits].map(u => ({ ...u, curHp: u.hp, alive: true, turnCounter: 0 }));
+            const log = [];
+
+            // ===== KỸ NĂNG BỊ ĐỘNG "RA TRẬN" (passiveOnBattleStart): áp dụng 1 LẦN DUY NHẤT trước khi trận bắt đầu =====
+            // VD: Thỏ Ngọc - Thiên Phú Thỏ: tăng 5% Tấn Công cho toàn đội ngay khi ra trận.
+            ['player', 'monster'].forEach(side => {
+                const sideUnits = allUnits.filter(u => u.side === side);
+                sideUnits.forEach(u => {
+                    const combatSkill = HERO_COMBAT_SKILLS[u.name];
+                    if (combatSkill && typeof combatSkill.passiveOnBattleStart === 'function') {
+                        combatSkill.passiveOnBattleStart(u, sideUnits);
+                    }
+                });
+            });
+
+            let round = 0;
+            const maxRounds = 60; // giới hạn để tránh lặp vô hạn nếu 2 bên quá cân bằng
+            while (round < maxRounds) {
+                round++;
+                if (!allUnits.some(u => u.side === 'player' && u.alive) || !allUnits.some(u => u.side === 'monster' && u.alive)) break;
+                const order = allUnits.filter(u => u.alive).sort((a, b) => b.spd - a.spd || Math.random() - 0.5);
+                for (const attacker of order) {
+                    if (!attacker.alive) continue;
+                    if (!allUnits.some(u => u.side !== attacker.side && u.alive)) break;
+
+                    // ===== CHU KỲ 3 LƯỢT RIÊNG CỦA TỪNG ĐƠN VỊ: lượt1 thường · lượt2 40% kỹ năng · lượt3 30% đặc biệt =====
+                    const cyclePhase = attacker.turnCounter % 3; // 0 = lượt 1, 1 = lượt 2, 2 = lượt 3
+                    let skillKind = 'thuong';
+                    if (cyclePhase === 1 && Math.random() < 0.4) skillKind = 'kynang';
+                    else if (cyclePhase === 2 && Math.random() < 0.3) skillKind = 'dacbiet';
+                    attacker.turnCounter++;
+
+                    // ===== LẤY HỆ SỐ SÁT THƯƠNG + KIỂU NHẮM MỤC TIÊU CỦA KỸ NĂNG SẼ DÙNG =====
+                    let skillDef, skillDisplayName;
+                    if (attacker.side === 'player') {
+                        const combatSkill = getHeroCombatSkill(attacker.name);
+                        skillDef = combatSkill[skillKind] || combatSkill.thuong;
+                        skillDisplayName = (getHeroSkillTemplate(attacker.name)[skillKind] || {}).name || skillKind;
+                    } else {
+                        skillDef = MONSTER_SKILL_TIERS[skillKind];
+                        skillDisplayName = skillKind === 'dacbiet' ? (attacker.specialSkillName || attacker.name)
+                            : skillKind === 'kynang' ? (attacker.skillName || attacker.name)
+                            : attacker.name;
+                    }
+
+                    const targets = pickSkillTargets(attacker, skillDef.targeting, allUnits);
+                    if (targets.length === 0) break;
+
+                    targets.forEach((target, idx) => {
+                        const result = resolveDamageInstance(attacker, target, skillDef.multiplier);
+                        if (!result.isMiss) {
+                            target.curHp = Math.max(0, target.curHp - result.dmg);
+                            if (target.curHp <= 0) target.alive = false;
+                            // BỊ ĐỘNG "BỊ ĐÁNH TRÚNG" (onDamagedTaken): VD Goku - Tinh Thần Chiến Đấu, tăng SPD khi bị đánh trúng
+                            const targetCombatSkill = HERO_COMBAT_SKILLS[target.name];
+                            if (targetCombatSkill && typeof targetCombatSkill.onDamagedTaken === 'function') {
+                                targetCombatSkill.onDamagedTaken(target);
+                            }
+                            // GIẢM PHÒNG THỦ MỤC TIÊU: VD Thetis - Sóng Ngầm Băng Giá (giảm né/phòng thủ mục tiêu)
+                            if (skillDef.defDownTarget) target.def = Math.max(1, Math.round(target.def * (1 - skillDef.defDownTarget)));
+                        }
+                        log.push({
+                            attackerId: attacker.id, attackerName: attacker.name, attackerSide: attacker.side,
+                            targetId: target.id, targetName: target.name,
+                            dmg: result.dmg, isMiss: result.isMiss, isCrit: result.isCrit, elemBonus: result.elemBonus,
+                            targetDead: !target.alive, targetHpAfter: target.curHp, targetMaxHp: target.hp,
+                            skillKind, skillName: skillDisplayName, showBanner: (skillKind !== 'thuong' && idx === 0)
+                        });
+                    });
+
+                    // TỰ BUFF BẢN THÂN SAU KHI RA ĐÒN: VD Goku - Bản Năng Vô Cực (tăng ATK/DEF/SPD, duy trì hết trận)
+                    if (skillDef.selfBuff) {
+                        if (skillDef.selfBuff.atk) attacker.atk = Math.round(attacker.atk * (1 + skillDef.selfBuff.atk));
+                        if (skillDef.selfBuff.def) attacker.def = Math.round(attacker.def * (1 + skillDef.selfBuff.def));
+                        if (skillDef.selfBuff.spd) attacker.spd = Math.round(attacker.spd * (1 + skillDef.selfBuff.spd));
+                    }
+
+                    // BỊ ĐỘNG "CUỐI LƯỢT BẢN THÂN" (onOwnTurnEnd): VD Thetis - Máu Của Biển Cả, hồi HP sau mỗi lượt của chính mình
+                    const attackerCombatSkill = HERO_COMBAT_SKILLS[attacker.name];
+                    if (attackerCombatSkill && typeof attackerCombatSkill.onOwnTurnEnd === 'function') {
+                        attackerCombatSkill.onOwnTurnEnd(attacker);
+                    }
+
+                    if (!allUnits.some(u => u.side === 'player' && u.alive) || !allUnits.some(u => u.side === 'monster' && u.alive)) break;
+                }
+            }
+            const playerWon = allUnits.some(u => u.side === 'player' && u.alive) && !allUnits.some(u => u.side === 'monster' && u.alive);
+            return { log, playerWon };
+        }
+
+        // THẺ HIỂN THỊ 1 ĐƠN VỊ TRONG TRẬN ĐẤU (TƯỚNG HOẶC QUÁI): dùng ảnh splash, có ô chứa số sát thương nổi lên phía trên ảnh
+        function battleUnitCardHtml(u) {
+            const pct = Math.max(0, Math.round((u.curHp / u.maxHp) * 100));
+            const isMonster = u.side === 'monster';
+            const portrait = isMonster
+                ? `<div class="w-full aspect-[3/4] rounded-lg bg-gradient-to-b from-slate-700 to-slate-900 flex items-center justify-center text-3xl">${ELEMENT_ICON[u.element] || '👹'}</div>`
+                : `<img src="${u.splash}" onerror="this.src='https://via.placeholder.com/120x160?text=${u.name}'" class="w-full aspect-[3/4] object-cover rounded-lg">`;
+            return `
+                <div id="battle-unit-${u.id}" class="relative transition-transform ${u.alive ? '' : 'opacity-25 grayscale'}">
+                    <div id="battle-dmg-host-${u.id}" class="absolute inset-x-0 top-0 flex justify-center pointer-events-none"></div>
+                    <div class="border ${isMonster ? 'border-red-900/60' : 'border-cyan-700/60'} rounded-lg overflow-hidden bg-slate-950">
+                        ${portrait}
+                        <div class="px-1 py-0.5">
+                            <div class="flex items-center justify-between">
+                                <p class="text-[7px] text-white font-bold truncate">${u.name}</p>
+                                <span class="text-[6px] text-yellow-400 font-mono shrink-0 ml-0.5">Lv.${u.level || 1}</span>
+                            </div>
+                            <div class="w-full h-1 bg-slate-800 rounded-full overflow-hidden mt-0.5"><div class="hp-bar-fill h-full ${isMonster ? 'bg-red-500' : 'bg-emerald-500'}" style="width:${pct}%"></div></div>
+                        </div>
+                    </div>
+                </div>`;
+        }
+
+        // DỰNG LẠI TOÀN BỘ 4 KHU VỰC ĐỘI HÌNH (chỉ gọi lúc bắt đầu trận / khi bỏ qua xem trận, tránh phá hiệu ứng đang chạy giữa trận)
+        function renderBattleUnits() {
+            const monsters = battlePlaybackUnits.filter(u => u.side === 'monster');
+            const players = battlePlaybackUnits.filter(u => u.side === 'player');
+            document.getElementById('battle-monster-front').innerHTML = monsters.filter(u => FORMATION_TOP_SLOTS.includes(u.slotIndex)).sort((a, b) => a.slotIndex - b.slotIndex).map(battleUnitCardHtml).join('');
+            document.getElementById('battle-monster-back').innerHTML = monsters.filter(u => FORMATION_BOTTOM_SLOTS.includes(u.slotIndex)).sort((a, b) => a.slotIndex - b.slotIndex).map(battleUnitCardHtml).join('');
+            document.getElementById('battle-player-front').innerHTML = players.filter(u => FORMATION_TOP_SLOTS.includes(u.slotIndex)).sort((a, b) => a.slotIndex - b.slotIndex).map(battleUnitCardHtml).join('');
+            document.getElementById('battle-player-back').innerHTML = players.filter(u => FORMATION_BOTTOM_SLOTS.includes(u.slotIndex)).sort((a, b) => a.slotIndex - b.slotIndex).map(battleUnitCardHtml).join('');
+        }
+
+        // CHỈ CẬP NHẬT THANH HP / TRẠNG THÁI SỐNG-CHẾT CỦA 1 THẺ (không dựng lại DOM) ĐỂ KHÔNG LÀM GIÁN ĐOẠN HIỆU ỨNG ĐANG CHẠY
+        function updateUnitCardVisual(u) {
+            const card = document.getElementById(`battle-unit-${u.id}`);
+            if (!card) return;
+            const bar = card.querySelector('.hp-bar-fill');
+            if (bar) bar.style.width = Math.max(0, Math.round((u.curHp / u.maxHp) * 100)) + '%';
+            if (!u.alive) card.classList.add('opacity-25', 'grayscale');
+        }
+
+        function applyBattleEventToState(evt) {
+            const target = battlePlaybackUnits.find(u => u.id === evt.targetId);
+            if (target) { target.curHp = evt.targetHpAfter; if (evt.targetDead) target.alive = false; }
+        }
+
+        // PHÁT 1 SỰ KIỆN TRẬN ĐẤU: nhấc ảnh đơn vị ra đòn lên rồi hạ về vị trí cũ, và cho số sát thương nổi lên phía trên ảnh mục tiêu bị đánh trúng
+        function playNextBattleEvent() {
+            if (battlePlaybackIndex >= battlePlaybackLog.length) {
+                clearInterval(battlePlaybackTimer); battlePlaybackTimer = null;
+                finishBattlePlayback();
+                return;
+            }
+            const evt = battlePlaybackLog[battlePlaybackIndex]; battlePlaybackIndex++;
+            applyBattleEventToState(evt);
+
+            // NẾU DÙNG KỸ NĂNG (không phải đánh thường): tên kỹ năng hiện lên giữa màn hình
+            if (evt.showBanner) showSkillNameBanner(evt.skillName);
+
+            const attackerCard = document.getElementById(`battle-unit-${evt.attackerId}`);
+            if (attackerCard) {
+                attackerCard.classList.remove('battle-attacking');
+                void attackerCard.offsetWidth; // ép trình duyệt reset animation nếu đơn vị này vừa đánh liên tiếp
+                attackerCard.classList.add('battle-attacking');
+                setTimeout(() => attackerCard.classList.remove('battle-attacking'), 450);
+            }
+
+            const dmgHost = document.getElementById(`battle-dmg-host-${evt.targetId}`);
+            if (dmgHost) {
+                const dmgSpan = document.createElement('span');
+                if (evt.isMiss) {
+                    dmgSpan.className = "battle-dmg-float text-[11px] font-black text-slate-300";
+                    dmgSpan.innerText = "Trượt!";
+                } else {
+                    dmgSpan.className = `battle-dmg-float font-black ${evt.isCrit ? 'text-orange-400 text-[15px]' : evt.elemBonus ? 'text-amber-400 text-[12px]' : 'text-rose-400 text-[12px]'}`;
+                    dmgSpan.innerText = `-${evt.dmg}${evt.isCrit ? ' 💥' : evt.elemBonus ? ' ⚡' : ''}`;
+                }
+                dmgHost.appendChild(dmgSpan);
+                setTimeout(() => dmgSpan.remove(), 850);
+            }
+
+            const targetUnit = battlePlaybackUnits.find(u => u.id === evt.targetId);
+            if (targetUnit) updateUnitCardVisual(targetUnit);
+        }
+
+        // HIỂN THỊ TÊN KỸ NĂNG NỔI LÊN GIỮA MÀN HÌNH KHI 1 TƯỚNG/QUÁI SỬ DỤNG KỸ NĂNG (kynang hoặc dacbiet)
+        let skillBannerTimeout = null;
+        function showSkillNameBanner(skillName) {
+            const banner = document.getElementById('skill-name-banner');
+            const text = document.getElementById('skill-name-banner-text');
+            if (!banner || !text) return;
+            text.innerText = skillName;
+            banner.classList.remove('hidden');
+            banner.querySelector('span').classList.remove('skill-banner-pop');
+            void banner.offsetWidth;
+            banner.querySelector('span').classList.add('skill-banner-pop');
+            if (skillBannerTimeout) clearTimeout(skillBannerTimeout);
+            skillBannerTimeout = setTimeout(() => banner.classList.add('hidden'), 900);
+        }
+
+        function skipBattlePlayback() {
+            if (battlePlaybackTimer) { clearInterval(battlePlaybackTimer); battlePlaybackTimer = null; }
+            while (battlePlaybackIndex < battlePlaybackLog.length) {
+                applyBattleEventToState(battlePlaybackLog[battlePlaybackIndex]);
+                battlePlaybackIndex++;
+            }
+            renderBattleUnits(); // bỏ qua hiệu ứng, dựng lại 1 lần theo trạng thái cuối cùng
+            finishBattlePlayback();
+        }
+
+        // ================= KẾT THÚC TRẬN: TÍNH THƯỞNG, CẬP NHẬT TIẾN TRÌNH, HIỂN THỊ POPUP KẾT QUẢ =================
+        function computeStageRewards(chapter, stage) {
+            const difficulty = (chapter - 1) * 10 + stage;
+            const rewards = {
+                "Vàng": Math.round(180 + difficulty * 35 + Math.random() * 80),
+                "Hồn Thạch": Math.round(3 + Math.floor(difficulty / 2) + Math.random() * 3)
+            };
+            if (stage === 10) rewards["Kim Cương"] = 40 + chapter * 10;               // ẢI CUỐI CỦA CHƯƠNG (1-10, 2-10...): thêm Kim Cương
+            else if (stage === 5) { rewards["Kẹo"] = 3; rewards["Trái Tim"] = 1; }     // ẢI GIỮA CHƯƠNG (1-5, 2-5...): thêm đồ nâng Thân Mật
+            return rewards;
+        }
+        function applyRewardsToInventory(rewards) {
+            Object.keys(rewards).forEach(key => {
+                if (key === "Vàng") { userStats.gold += rewards[key]; return; }
+                if (key === "Kim Cương") { userStats.diamonds += rewards[key]; return; }
+                if (rewards[key] > 0) myMaterials[key] = (myMaterials[key] || 0) + rewards[key];
+            });
+        }
+        const REWARD_ICON_MAP = { "Vàng": "🪙", "Hồn Thạch": "💠", "Kim Cương": "💎", "Kẹo": "🍬", "Trái Tim": "❤️" };
+
+        function finishBattlePlayback() {
+            document.getElementById('btn-battle-skip').classList.add('hidden');
+            const { chapter, stage } = openedStage;
+            const wasFrontier = (chapter === campaignProgress.chapter && stage === campaignProgress.stage + 1);
+            if (lastBattleWasWin) {
+                lastBattleRewards = computeStageRewards(chapter, stage);
+                applyRewardsToInventory(lastBattleRewards);
+                if (wasFrontier) { // CHỈ TIẾN TIẾN TRÌNH KHI VỪA VƯỢT ĐÚNG ẢI KẾ TIẾP CẦN VƯỢT (đánh lại ải cũ để cày không tính tiến trình)
+                    if (stage >= 10) campaignProgress = { chapter: chapter + 1, stage: 0 };
+                    else campaignProgress.stage = stage;
+                }
+            } else {
+                lastBattleRewards = {};
+            }
+            updateUI();
+            showStageResultPopup();
+        }
+
+        function showStageResultPopup() {
+            const { chapter, stage } = openedStage;
+            const card = document.getElementById('stage-result-card');
+            const title = document.getElementById('stage-result-title');
+            const btnContinue = document.getElementById('btn-stage-result-continue');
+            document.getElementById('stage-result-sub').innerText = `Ải ${stageLabel(chapter, stage)}`;
+            const rewardsGrid = document.getElementById('stage-result-rewards'); rewardsGrid.innerHTML = "";
+
+            if (lastBattleWasWin) {
+                card.className = "w-full bg-slate-900 border-2 border-emerald-500 rounded-2xl p-5 text-center";
+                title.className = "text-xl font-black tracking-widest mb-1 text-emerald-400";
+                title.innerText = "🎉 CHIẾN THẮNG";
+                Object.keys(lastBattleRewards).forEach(key => {
+                    rewardsGrid.innerHTML += `
+                        <div class="bg-slate-950 border border-slate-800 rounded-lg p-2 text-center">
+                            <span class="text-lg block">${REWARD_ICON_MAP[key] || '🎁'}</span>
+                            <p class="text-[9px] text-cyan-300 font-mono font-bold">+${lastBattleRewards[key]}</p>
+                            <p class="text-[7px] text-slate-500 truncate">${key}</p>
+                        </div>`;
+                });
+                btnContinue.innerText = "⚔️ Tự động sau 2s";
+                btnContinue.classList.remove('hidden');
+            } else {
+                card.className = "w-full bg-slate-900 border-2 border-red-600 rounded-2xl p-5 text-center";
+                title.className = "text-xl font-black tracking-widest mb-1 text-red-500";
+                title.innerText = "💀 THẤT BẠI";
+                rewardsGrid.innerHTML = `<p class="col-span-3 text-[10px] text-slate-400 italic">Đội hình chưa đủ mạnh, hãy nâng cấp tướng hoặc thử lại!</p>`;
+                btnContinue.innerText = "🔄 Thử Lại";
+                btnContinue.classList.remove('hidden');
+            }
+            document.getElementById('stage-result-popup').classList.remove('hidden');
+// Nếu thắng thì sau 2 giây tự động bấm "Đánh Tiếp"
+if (lastBattleWasWin) {
+    setTimeout(() => {
+        const btn = document.getElementById('btn-stage-result-continue');
+
+        // Kiểm tra popup vẫn đang mở
+        if (!document.getElementById('stage-result-popup').classList.contains('hidden')) {
+            btn.click();
+        }
+    }, 2000);
+}
+        }
+
+        // "ĐÁNH TIẾP": nếu vừa thắng → tự mở ải kế tiếp (nếu đã mở khóa); nếu vừa thua → thử lại đúng ải đó
+        // MỞ 1 ẢI VÀ TỰ ĐỘNG VÀO TRẬN LUÔN (dùng cho nút "Đánh Tiếp" ở popup kết quả) - không cần quay lại màn chuẩn bị bấm "Tấn Công"
+        function openStageAndAutoBattle(chapter, stage) {
+            openedStage = { chapter, stage };
+            const gen = generateStageMonsters(chapter, stage);
+            currentStageMonsters = gen.monsters;
+            currentStageElement = gen.element;
+            startBattle();
+        }
+
+        function onStageResultContinue() {
+            document.getElementById('stage-result-popup').classList.add('hidden');
+            if (lastBattleWasWin) {
+                const nextStage = openedStage.stage >= 10 ? 1 : openedStage.stage + 1;
+                const nextChapter = openedStage.stage >= 10 ? openedStage.chapter + 1 : openedStage.chapter;
+                if (isStageUnlocked(nextChapter, nextStage)) { openStageAndAutoBattle(nextChapter, nextStage); return; }
+                openStageSelectScreen();
+            } else {
+                openStageAndAutoBattle(openedStage.chapter, openedStage.stage);
+            }
+        }
+        function onStageResultExit() {
+            document.getElementById('stage-result-popup').classList.add('hidden');
+            openStageSelectScreen();
+        }
+
+        // ================================================================================= //
+        // RƯƠNG QUÀ OFFLINE THỜI GIAN THỰC: tính theo số phút offline kể từ lần lưu gần nhất,  //
+        // offline càng lâu quà càng nhiều (Vàng, Hồn Thạch, Kim Cương, Kẹo, Trái Tim), tối đa   //
+        // tính 8 tiếng offline liên tục để tránh cày điểm bằng cách để game tắt quá lâu.        //
+        // ================================================================================= //
+        let pendingOfflineReward = null;
+
+        function computeOfflineRewards(offlineSeconds) {
+            const cap = 8 * 3600;
+            const secs = Math.min(Math.max(offlineSeconds, 0), cap);
+            const minutes = Math.floor(secs / 60);
+            if (minutes < 1) return null;
+            return {
+                minutes,
+                "Vàng": minutes * (8 + Math.floor(Math.random() * 6)),
+                "Hồn Thạch": Math.max(1, Math.floor(minutes / 12) + Math.floor(Math.random() * 3)),
+                "Kẹo": Math.floor(minutes / 20),
+                "Trái Tim": Math.floor(minutes / 90),
+                "Kim Cương": Math.floor(minutes / 240) + (Math.random() < 0.3 ? 1 : 0)
+            };
+        }
+
+        function checkOfflineReward() {
+            const lastSavedAt = peekLastSavedAt();
+            if (!lastSavedAt) return;
+            const offlineSeconds = (Date.now() - lastSavedAt) / 1000;
+            const reward = computeOfflineRewards(offlineSeconds);
+            if (!reward) return;
+            pendingOfflineReward = reward;
+            document.getElementById('offline-reward-duration').innerText = `Bạn đã offline ${reward.minutes} phút`;
+            const list = document.getElementById('offline-reward-list'); list.innerHTML = "";
+            Object.keys(reward).forEach(key => {
+                if (key === "minutes" || reward[key] <= 0) return;
+                list.innerHTML += `
+                    <div class="bg-slate-950 border border-slate-800 rounded-lg p-2 text-center">
+                        <span class="text-lg block">${REWARD_ICON_MAP[key] || '🎁'}</span>
+                        <p class="text-[9px] text-cyan-300 font-mono font-bold">+${reward[key]}</p>
+                        <p class="text-[7px] text-slate-500 truncate">${key}</p>
+                    </div>`;
+            });
+            document.getElementById('offline-reward-popup').classList.remove('hidden');
+        }
+        function claimOfflineReward() {
+            if (pendingOfflineReward) applyRewardsToInventory(pendingOfflineReward);
+            pendingOfflineReward = null;
+            document.getElementById('offline-reward-popup').classList.add('hidden');
+            updateUI();
+        }
+
         loadGameState(); // NẠP DỮ LIỆU ĐÃ LƯU (NẾU CÓ) TRƯỚC KHI HIỂN THỊ MÀN HÌNH ĐẦU TIÊN
-        switchScreen('gacha');
+        checkOfflineReward(); // TÍNH & HIỂN THỊ RƯƠNG QUÀ OFFLINE (NẾU CÓ) DỰA TRÊN THỜI GIAN OFFLINE
+        switchScreen('lobby');
         updateUI();
     </script>
 </body>
