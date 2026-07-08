@@ -468,6 +468,17 @@
 
     </div>
 
+    <!-- ================================================================================= -->
+    <!-- 4 CƠ SỞ DỮ LIỆU GAME ĐƯỢC TÁCH RA FILE RIÊNG TRONG THƯ MỤC data/.                    -->
+    <!-- BẮT BUỘC nạp bằng thẻ <script> THƯỜNG (không dùng type="module") và đặt TRƯỚC khối    -->
+    <!-- <script> logic chính bên dưới, để các hằng số HERO_DB/SKILL_DB/HERO_COMBAT_SKILLS/    -->
+    <!-- BOND_DB tồn tại sẵn dưới dạng biến toàn cục trước khi logic chính được thực thi.       -->
+    <!-- ================================================================================= -->
+    <script src="data/hero_db.js"></script>
+    <script src="data/skill_db.js"></script>
+    <script src="data/hero_combat_skills.js"></script>
+    <script src="data/bond_db.js"></script>
+
     <script>
         // KHẮC PHỤC LỖI THANH ĐIỀU HƯỚNG DƯỚI CÙNG BỊ ĐẨY RA NGOÀI MÀN HÌNH TRÊN DI ĐỘNG:
         // Tính chiều cao THẬT của vùng hiển thị (window.innerHeight) và lưu vào biến CSS --app-height.
@@ -480,157 +491,12 @@
         window.addEventListener('orientationchange', setAppHeight);
         if (window.visualViewport) window.visualViewport.addEventListener('resize', setAppHeight);
 
-        // CƠ SỞ DỮ LIỆU GAME PHỤC VỤ QUAY GACHA VÀ PHẦN THƯỞNG BANNER
-        // critDame = % SÁT THƯƠNG CHÍ MẠNG: khi ra đòn chí mạng, sát thương nhân thêm (critDame/100) lần. VD 150 nghĩa là x1.5 sát thương.
-        // hitRate  = % ĐÁNH TRÚNG: xác suất đòn đánh/kỹ năng trúng mục tiêu, nếu trượt thì không gây sát thương ("Trượt!").
-        // Nếu 1 tướng không khai báo critDame/hitRate riêng thì dùng DEFAULT_CRIT_DAME / DEFAULT_HIT_RATE ở dưới.
-        const DEFAULT_CRIT_DAME = 150; // mặc định +50% sát thương khi chí mạng
-        const DEFAULT_HIT_RATE = 90;   // mặc định 90% cơ hội đánh trúng
-        const HERO_DB = {
-            "Thỏ Ngọc": { rarity: "SSR", element: "KIM", job: "CHIẾN SĨ", atk: 120, hp: 1000, def: 60, spd: 115, critDame: 150, hitRate: 92, avatar: "Assets/img/heroes/thongoc/avatar.png", splash: "Assets/img/heroes/thongoc/splash.png" },
-            "Thetis": { rarity: "SSR", element: "THỦY", job: "PHÁP SƯ", atk: 150, hp: 850, def: 45, spd: 110, critDame: 145, hitRate: 90, avatar: "Assets/img/heroes/thetis/avatar.png", splash: "Assets/img/heroes/thetis/splash.png" },
-            "Arthur": { rarity: "SR", element: "HỎA", job: "KIẾM SĨ", atk: 140, hp: 1100, def: 70, spd: 105, critDame: 150, hitRate: 90, avatar: "", splash: "" },
-            "Merlin": { rarity: "SR", element: "PHONG", job: "PHÁP SƯ", atk: 110, hp: 750, def: 40, spd: 112, critDame: 140, hitRate: 93, avatar: "Assets/img/heroes/merlin/avatar.png", splash: "Assets/img/heroes/merlin/splash.png" },
-            "Goku": { rarity: "SR", element: "LÔI", job: "ĐẤU SĨ", atk: 170, hp: 950, def: 50, spd: 120, critDame: 160, hitRate: 88, avatar: "Assets/img/heroes/goku/avatar.png", splash: "Assets/img/heroes/goku/splash.png" },
-            "Luffy": { rarity: "R", element: "THỦY", job: "DỰ BI", atk: 5, hp: 200, def: 5, spd: 98, critDame: 135, hitRate: 88, avatar: "Assets/img/heroes/luffy/avatar.png", splash: "Assets/img/heroes/luffy/splash.png" }
-        };
-
         // ================================================================================= //
-        // CƠ SỞ DỮ LIỆU KỸ NĂNG (SKILL_DB)                                                     //
-        // Mỗi tướng có đúng 4 loại kỹ năng cố định (khoá "thuong/kynang/dacbiet/bidong"):        //
-        //   - thuong  = Đánh Thường (chiêu cơ bản, luôn dùng được)                              //
-        //   - kynang  = Kỹ Năng (chiêu chủ động thường dùng trong trận)                          //
-        //   - dacbiet = Kỹ Năng Đặc Biệt (chiêu mạnh nhất / cần tích năng lượng)                  //
-        //   - bidong  = Kỹ Năng Bị Động (hiệu ứng luôn tồn tại, không cần bấm)                    //
-        // THÊM TƯỚNG MỚI: chỉ cần thêm 1 khoá tên tướng mới với đủ 4 mục thuong/kynang/dacbiet/bidong. //
-        // NẾU KHÔNG KHAI BÁO RIÊNG, TƯỚNG SẼ DÙNG DEFAULT_SKILL_TEMPLATE PHÍA DƯỚI.               //
+        // 4 CƠ SỞ DỮ LIỆU GAME (HERO_DB, SKILL_DB, HERO_COMBAT_SKILLS, BOND_DB) ĐÃ ĐƯỢC TÁCH   //
+        // RA CÁC FILE RIÊNG TRONG THƯ MỤC data/ VÀ NẠP BẰNG <script src> NGAY TRƯỚC KHỐI        //
+        // <script> NÀY. XEM: data/hero_db.js, data/skill_db.js,                                //
+        // data/hero_combat_skills.js, data/bond_db.js                                          //
         // ================================================================================= //
-        const SKILL_DB = {
-            "Thỏ Ngọc": {
-                thuong:  { name: "Húc Ngọc",           icon: "👊", desc: "Đánh thường gây sát thương hệ Kim lên 1 kẻ địch." },
-                kynang:  { name: "Xoáy Băng Ngọc",       icon: "🌀", desc: "Gây sát thương diện rộng và làm chậm tốc độ địch." },
-                dacbiet: { name: "Thịnh Nộ Bạch Thố",     icon: "💥", desc: "Kỹ năng đặc biệt: sát thương cực lớn lên toàn bộ kẻ địch." },
-                bidong:  { name: "Thiên Phú Thỏ",         icon: "🎯", desc: "Bị động: tự động tăng % Tấn Công cho toàn team khi ra trận." }
-            },
-            "Thetis": {
-                thuong:  { name: "Trượng Thủy Triều",     icon: "👊", desc: "Đánh thường gây sát thương hệ Thủy lên 1 kẻ địch." },
-                kynang:  { name: "Sóng Ngầm Băng Giá",     icon: "🌊", desc: "Tạo một cột nước đóng băng, gây sát thương và giảm né." },
-                dacbiet: { name: "Đại Hồng Thủy",         icon: "💥", desc: "Kỹ năng đặc biệt: nhấn chìm toàn bộ kẻ địch, sát thương cực lớn." },
-                bidong:  { name: "Máu Của Biển Cả",       icon: "🎯", desc: "Bị động: hồi phục % HP mỗi khi kết thúc lượt." }
-            },
-            "Arthur": {
-                thuong:  { name: "Chém Vương Kiếm",       icon: "👊", desc: "Đánh thường gây sát thương hệ Hỏa lên 1 kẻ địch." },
-                kynang:  { name: "Lưỡi Kiếm Rực Lửa",       icon: "🔥", desc: "Tung một đường kiếm khí gây sát thương lan sang địch gần." },
-                dacbiet: { name: "Excalibur Giáng Thế",    icon: "💥", desc: "Kỹ năng đặc biệt: giáng một đòn chí mạng sát thương cực lớn." },
-                bidong:  { name: "Ý Chí Quân Vương",       icon: "🎯", desc: "Bị động: tăng % Phòng Thủ khi HP xuống dưới 50%." }
-            },
-            "Merlin": {
-                thuong:  { name: "Trượng Phong Ma",       icon: "👊", desc: "Đánh thường gây sát thương hệ Phong lên 1 kẻ địch." },
-                kynang:  { name: "Cuồng Phong Hỗn Loạn",   icon: "🌪️", desc: "Tạo lốc xoáy gây sát thương và có tỉ lệ làm choáng địch." },
-                dacbiet: { name: "Đại Pháp Thuật Cổ Xưa",  icon: "💥", desc: "Kỹ năng đặc biệt: triệu hồi phép thuật cổ, sát thương toàn màn." },
-                bidong:  { name: "Trí Tuệ Vô Song",        icon: "🎯", desc: "Bị động: tăng % Tấn Công theo % Tốc Độ hiện có." }
-            },
-            "Goku": {
-                thuong:  { name: "Đấm Lôi Chấn",          icon: "👊", desc: "Đánh thường gây sát thương hệ Lôi lên 1 kẻ địch." },
-                kynang:  { name: "Kamehameha",            icon: "⚡", desc: "Phóng ra luồng năng lượng gây sát thương lớn theo đường thẳng." },
-                dacbiet: { name: "Bản Năng Vô Cực",       icon: "💥", desc: "Kỹ năng đặc biệt: tăng mạnh mọi chỉ số trong vài lượt." },
-                bidong:  { name: "Tinh Thần Chiến Đấu",   icon: "🎯", desc: "Bị động: tăng % Tốc Độ khi bị đánh trúng." }
-            },
-            "Luffy": {
-                thuong:  { name: "Đấm Cao Su",            icon: "👊", desc: "Đánh thường gây sát thương hệ Thủy lên 1 kẻ địch." },
-                kynang:  { name: "Súng Gatling",          icon: "🥊", desc: "Tung liên tiếp nhiều cú đấm gây sát thương dồn dập." },
-                dacbiet: { name: "Thức Tỉnh Trái Ác Quỷ",  icon: "💥", desc: "Kỹ năng đặc biệt: biến hình tăng mạnh sát thương gây ra." },
-                bidong:  { name: "Cơ Thể Cao Su",         icon: "🎯", desc: "Bị động: giảm % sát thương vật lý phải nhận." }
-            }
-        };
-        // MẪU KỸ NĂNG DÙNG CHUNG CHO TƯỚNG CHƯA ĐƯỢC KHAI BÁO RIÊNG TRONG SKILL_DB
-        const DEFAULT_SKILL_TEMPLATE = {
-            thuong:  { name: "Đánh Thường",        icon: "👊", desc: "Gây sát thương vật lý cơ bản lên 1 kẻ địch." },
-            kynang:  { name: "Kỹ Năng",            icon: "✨", desc: "Chiêu thức chủ động gây sát thương hoặc hiệu ứng lên kẻ địch." },
-            dacbiet: { name: "Kỹ Năng Đặc Biệt",   icon: "💥", desc: "Chiêu thức mạnh nhất, cần tích lũy năng lượng để kích hoạt." },
-            bidong:  { name: "Kỹ Năng Bị Động",    icon: "🎯", desc: "Hiệu ứng bị động luôn tồn tại khi tướng ra trận." }
-        };
-        // THỨ TỰ & NHÃN HIỂN THỊ CỦA 4 LOẠI KỸ NĂNG TRÊN GIAO DIỆN
-        const SKILL_TYPES = [
-            { key: "thuong",  label: "Đánh Thường" },
-            { key: "kynang",  label: "Kỹ Năng" },
-            { key: "dacbiet", label: "Kỹ Năng Đặc Biệt" },
-            { key: "bidong",  label: "Kỹ Năng Bị Động" }
-        ];
-        function getHeroSkillTemplate(heroName) { return SKILL_DB[heroName] || DEFAULT_SKILL_TEMPLATE; }
-
-        // ================================================================================= //
-        // HERO_COMBAT_SKILLS: DỮ LIỆU CHỨC NĂNG THỰC SỰ DÙNG TRONG MÔ PHỎNG CHIẾN ĐẤU          //
-        // (khác với SKILL_DB ở trên chỉ là tên/icon/mô tả để hiển thị UI)                       //
-        // Mỗi mục gồm:                                                                          //
-        //   thuong / kynang / dacbiet: { multiplier: hệ số % Tấn Công dùng làm sát thương,        //
-        //        targeting: 'default' (mục tiêu ưu tiên theo trận hình, hàng trên trước) |        //
-        //                   'lowestHp' (mục tiêu địch đang thấp máu nhất) |                       //
-        //                   'all' (toàn bộ địch còn sống, lan diện rộng) |                        //
-        //                   'pierce2' (xuyên thẳng trúng 2 mục tiêu liên tiếp theo trận hình) }    //
-        //   passiveOnBattleStart(unit, allyUnits): hiệu ứng bị động áp dụng 1 LẦN DUY NHẤT lúc    //
-        //        vừa vào trận (ví dụ buff chỉ số toàn team ngay khi ra trận).                      //
-        //   onDamagedTaken(unit): hiệu ứng bị động kích hoạt MỖI KHI đơn vị này bị đánh trúng.      //
-        //   onOwnTurnEnd(unit): hiệu ứng bị động kích hoạt sau MỖI LƯỢT đơn vị này vừa ra đòn.       //
-        // MUỐN THÊM TƯỚNG MỚI: copy 1 khối bên dưới, đổi multiplier/targeting/hiệu ứng theo ý muốn.  //
-        // TƯỚNG CHƯA KHAI BÁO Ở ĐÂY SẼ DÙNG DEFAULT_HERO_COMBAT_SKILL (áp dụng cho Arthur/Merlin/Luffy). //
-        // ================================================================================= //
-        const HERO_COMBAT_SKILLS = {
-            // ---- THỎ NGỌC (VÍ DỤ MẪU THEO ĐÚNG YÊU CẦU) ----
-            "Thỏ Ngọc": {
-                thuong:  { multiplier: 1.0, targeting: 'default' },   // Húc Ngọc: 100% Tấn Công lên 1 mục tiêu theo trận hình
-                kynang:  { multiplier: 2.5, targeting: 'lowestHp' },  // Xoáy Băng Ngọc: 250% sát thương lên mục tiêu thấp máu nhất
-                dacbiet: { multiplier: 2.0, targeting: 'all' },       // Thịnh Nộ Bạch Thố: 200% sát thương lên TẤT CẢ tướng địch
-                // Bị động Thiên Phú Thỏ: ngay khi ra trận, tăng 5% Tấn Công cho TOÀN ĐỘI (chỉ áp dụng nếu Thỏ Ngọc thuộc phe đó)
-                passiveOnBattleStart(unit, allyUnits) {
-                    allyUnits.forEach(u => { u.atk = Math.round(u.atk * 1.05); });
-                }
-            },
-            // ---- GOKU (VÍ DỤ MẪU) ----
-            "Goku": {
-                thuong:  { multiplier: 1.0, targeting: 'default' },   // Đấm Lôi Chấn: 100% Tấn Công lên 1 mục tiêu theo trận hình
-                kynang:  { multiplier: 2.2, targeting: 'pierce2' },   // Kamehameha: 220% sát thương, xuyên thẳng trúng 2 mục tiêu liên tiếp
-                // Bản Năng Vô Cực: tự buff mạnh ATK/DEF/SPD của Goku (+30%, duy trì hết trận) rồi đánh 150% Tấn Công vào mục tiêu
-                dacbiet: { multiplier: 1.5, targeting: 'default', selfBuff: { atk: 0.3, def: 0.3, spd: 0.3 } },
-                // Bị động Tinh Thần Chiến Đấu: mỗi lần Goku bị đánh trúng, Tốc Độ tăng thêm 5% (cộng dồn)
-                onDamagedTaken(unit) { unit.spd = Math.round(unit.spd * 1.05); }
-            },
-            // ---- THETIS (VÍ DỤ MẪU) ----
-            "Thetis": {
-                thuong:  { multiplier: 1.0, targeting: 'default' },   // Trượng Thủy Triều: 100% Tấn Công lên 1 mục tiêu theo trận hình
-                // Sóng Ngầm Băng Giá: 180% sát thương lên mục tiêu thấp máu nhất, đồng thời giảm 15% Phòng Thủ mục tiêu đó (giảm né tránh)
-                kynang:  { multiplier: 1.8, targeting: 'lowestHp', defDownTarget: 0.15 },
-                dacbiet: { multiplier: 2.2, targeting: 'all' },       // Đại Hồng Thủy: 220% sát thương lên TẤT CẢ tướng địch
-                // Bị động Máu Của Biển Cả: sau MỖI LƯỢT của Thetis, hồi 8% HP tối đa cho chính mình
-                onOwnTurnEnd(unit) { unit.curHp = Math.min(unit.maxHp, unit.curHp + Math.round(unit.maxHp * 0.08)); }
-            }
-        };
-        // MẪU CHIẾN ĐẤU MẶC ĐỊNH CHO TƯỚNG CHƯA ĐƯỢC KHAI BÁO RIÊNG TRONG HERO_COMBAT_SKILLS
-        // (VD: Arthur, Merlin, Luffy) - chỉ có sát thương cơ bản theo tỉ lệ %, không có hiệu ứng đặc biệt.
-        const DEFAULT_HERO_COMBAT_SKILL = {
-            thuong:  { multiplier: 1.0, targeting: 'default' },
-            kynang:  { multiplier: 1.5, targeting: 'lowestHp' },
-            dacbiet: { multiplier: 1.8, targeting: 'all' }
-        };
-        function getHeroCombatSkill(heroName) { return HERO_COMBAT_SKILLS[heroName] || DEFAULT_HERO_COMBAT_SKILL; }
-
-        // ================================================================================= //
-        // CƠ SỞ DỮ LIỆU RÀNG BUỘC / DUYÊN PHẬN (BOND_DB)                                       //
-        // Nếu người chơi SỞ HỮU CẢ 2 TƯỚNG trong 1 cặp thì cả 2 được cộng thêm % chỉ số (bonus). //
-        // bonus tính theo % (0.1 = +10%) áp dụng lên atk/hp/def/spd sau khi tính trang bị.       //
-        // THÊM CẶP RÀNG BUỘC MỚI: copy 1 dòng bên dưới và đổi heroA/heroB/name/desc/bonus.        //
-        // ================================================================================= //
-        const BOND_DB = [
-            { heroA: "Thỏ Ngọc", heroB: "Thetis", name: "Băng Ngọc Tương Hòa", desc: "Thỏ Ngọc và Thetis vốn là đôi bạn tri kỷ, cùng ra trận sẽ hợp lực tăng sức mạnh.", bonus: { atk: 0.08, hp: 0.08, def: 0.05, spd: 0.05 } },
-            { heroA: "Arthur", heroB: "Merlin", name: "Vua & Đại Pháp Sư", desc: "Arthur và Merlin là cặp bài trùng huyền thoại, hỗ trợ nhau cả công lẫn thủ.", bonus: { atk: 0.1, def: 0.1 } },
-            { heroA: "Goku", heroB: "Luffy", name: "Chiến Hữu Nhiệt Huyết", desc: "Hai chiến binh máu lửa khi đứng cùng chiến tuyến sẽ càng thêm mạnh mẽ.", bonus: { atk: 0.12, spd: 0.08 } }
-        ];
-        // TRẢ VỀ TẤT CẢ CẶP RÀNG BUỘC LIÊN QUAN TỚI 1 TƯỚNG
-        function getHeroBonds(heroName) { return BOND_DB.filter(b => b.heroA === heroName || b.heroB === heroName); }
-        // TRẢ VỀ TÊN TƯỚNG "ĐỐI TÁC" TRONG 1 CẶP RÀNG BUỘC
-        function getBondPartnerName(bond, heroName) { return bond.heroA === heroName ? bond.heroB : bond.heroA; }
-        // KIỂM TRA XEM 1 TƯỚNG (THEO TÊN) CÓ ĐANG ĐƯỢC SỞ HỮU KHÔNG
-        function isHeroOwned(heroName) { return myHeroes.some(h => h.name === heroName); }
 
         // ================================================================================= //
         // HỆ THỐNG YÊU THÍCH / THÂN MẬT (FAVORABILITY) & BỘ SƯU TẬP ẢNH                         //
@@ -665,7 +531,7 @@
         ];
 
         // TỶ LỆ QUAY GACHA THEO ĐỘ HIẾM (ÁP DỤNG CHUNG CHO BANNER TƯỚNG VÀ TRANG BỊ)
-        const RARITY_RATES = { SSR: 0.05, SR: 0.20, R: 0.75 };
+        const RARITY_RATES = { SSR: 0.01, SR: 0.20, R: 0.79 };
         // SỐ KIM CƯƠNG QUY ĐỔI CHO 1 LƯỢT QUAY KHI ĐÃ HẾT VÉ TRIỆU HỒI
         const DIAMOND_COST_PER_ROLL = 150;
 
@@ -770,7 +636,7 @@
         };
 
         // CHI PHÍ HUY CHƯƠNG ĐỂ ĐỔI 1 TƯỚNG THEO ĐỘ HIẾM
-        const HERO_EXCHANGE_COST = { SSR: 100, SR: 50, R: 20 };
+        const HERO_EXCHANGE_COST = { SSR: 1000, SR: 500, R: 200 };
 
         // THỨ TỰ ƯU TIÊN HIỂN THỊ THEO ĐỘ HIẾM: SSR > SR > R
         const RARITY_PRIORITY = { SSR: 0, SR: 1, R: 2 };
@@ -1004,9 +870,11 @@
                 const db = HERO_DB[hero.name] || { avatar: "", rarity: "R" };
                 const borderClass = getRarityBorderClass(db.rarity);
                 grid.innerHTML += `
-                    <div onclick="openHeroDetail(${index})" class="border-2 ${borderClass} bg-slate-800 rounded-xl p-1 flex flex-col items-center justify-center text-center aspect-[3/4] cursor-pointer relative overflow-hidden">
-                        <img
+                    <div onclick="openHeroDetail(${index})" class="border-2 ${borderClass} bg-slate-800 rounded-xl cursor-pointer relative overflow-hidden w-full pt-[133%]">
+                        <div class="absolute inset-0 p-1 flex flex-col items-center justify-center text-center">
+                            <img
         src="${db.avatar}"
+        onerror="this.onerror=null; this.src='https://via.placeholder.com/150x200/1e293b/64748b?text=?';"
         class="absolute inset-0 w-full h-full object-cover">
 
     <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent"></div>
@@ -1018,6 +886,7 @@
     <span class="absolute bottom-1 right-1 bg-black/70 px-1 rounded text-yellow-400 text-[10px]">
         Lv.${hero.level}
     </span>
+                        </div>
                     </div>`;
             });
         }
@@ -1037,7 +906,7 @@
             const huyChuong = myMaterials["Huy Chương"] || 0;
 
             // ƯU TIÊN HIỂN THỊ TƯỚNG ĐỘ HIẾM CAO TRƯỚC, GIỐNG DANH SÁCH ANH HÙNG
-            const sortedNames = Object.keys(HERO_DB).sort((a, b) => RARITY_PRIORITY[HERO_DB[a].rarity] - RARITY_PRIORITY[HERO_DB[b].rarity]);
+            const sortedNames = Object.keys(HERO_DB).filter(name => HERO_DB[name].rarity === "SSR").sort((a, b) => RARITY_PRIORITY[HERO_DB[a].rarity] - RARITY_PRIORITY[HERO_DB[b].rarity]);
 
             sortedNames.forEach(name => {
                 const db = HERO_DB[name];
